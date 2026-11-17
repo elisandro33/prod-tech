@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROD-TECH | Controle de Produção e OEE</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <!-- TELA 1: SETUP INICIAL (Primeiro Acesso Master) -->
+    <div id="setup-screen" class="fullscreen-gate" style="display: none;">
+        <div class="gate-card">
+            <div class="gate-title">PROD-TECH</div>
+            <p style="color:#64748b; font-size:0.88rem; margin-bottom:16px;">Configuração Inicial do Administrador Master</p>
+            <input type="email" id="setup-email" class="input-text-white" placeholder="E-mail do Administrador">
+            <input type="password" id="setup-senha" class="input-text-white" placeholder="Senha (mínimo 6 caracteres)">
+            <button id="btn-save-setup" class="btn-submit-system">CRIAR ADMINISTRADOR</button>
+        </div>
+    </div>
+
+    <!-- TELA 2: LOGIN -->
+    <div id="auth-screen" class="fullscreen-gate" style="display: flex;">
+        <div class="gate-card">
+            <div class="gate-title" style="color: var(--primary-blue);">PROD-TECH</div>
+            <p style="color:#64748b; font-size:0.88rem; margin-bottom:16px;">Acesso ao Controle de Produção</p>
+            <div id="login-erro-banner" style="display:none; background:#fee2e2; color:#b91c1c; padding:10px; border-radius:8px; font-size:0.85rem; margin-bottom:12px;"></div>
+            <input type="email" id="login-email" class="input-text-white" placeholder="E-mail">
+            <input type="password" id="login-senha" class="input-text-white" placeholder="Senha">
+            <button id="btn-login" class="btn-submit-system">ENTRAR NO SISTEMA</button>
+        </div>
+    </div>
+
+    <!-- TELA 3: APLICAÇÃO PRINCIPAL -->
+    <div id="app-screen" style="display: none;">
+        
+        <!-- SIDEBAR LATERAL -->
+        <aside class="sidebar" id="sidebar">
+            <div class="logo">PROD-TECH</div>
+
+            <button id="tab-link-dash" class="sidebar-nav-item" onclick="switchViewTab('dash')">
+                📊 DASHBOARD HOME
+            </button>
+            <button id="tab-link-calc" class="sidebar-nav-item active" onclick="switchViewTab('calc')">
+                ✏️ APONTAMENTO (DIÁRIO)
+            </button>
+            <button id="tab-link-rel" class="sidebar-nav-item" onclick="switchViewTab('rel')">
+                📄 RELATÓRIO GERAL
+            </button>
+            <button id="menu-adm-gate" class="sidebar-nav-item" style="display: none;" onclick="switchViewTab('adm')">
+                👥 USUÁRIOS
+            </button>
+
+            <div class="sidebar-footer">
+                <div id="user-display" style="font-size: 0.78rem; color: #94a3b8; text-align: right; line-height: 1.4;">
+                    Carregando...
+                </div>
+                <button onclick="triggerSystemLogout()" style="background: var(--danger); color: white; justify-content: center; font-weight: 700;">
+                    Sair ➔
+                </button>
+            </div>
+        </aside>
+
+        <!-- CONTEÚDO PRINCIPAL -->
+        <main class="main-content" id="main-content">
+
+            <!-- ABA 1: DASHBOARD -->
+            <section id="dash" class="view-content">
+                <h2 class="dashboard-title">Visão Geral do Turno (Dashboard)</h2>
+
+                <!-- Filtros de Período -->
+                <div class="ui-card">
+                    <span class="ui-label">📅 FILTRO POR PERÍODO E DATA</span>
+                    <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+                        <button id="btn-dash-ontem" class="filter-pill-btn" onclick="setDashDatePeriod('ontem')">Ontem</button>
+                        <button id="btn-dash-mes" class="filter-pill-btn active" onclick="toggleSeletorMes()">Mês</button>
+                        
+                        <div id="box-seletor-mes" style="display: inline-block;">
+                            <select id="dash-select-mes" class="input-select-gray" style="margin-bottom:0; padding:8px 12px;" onchange="setDashDatePeriod('mes_especifico')">
+                                <option value="1">01 - Janeiro</option>
+                                <option value="2">02 - Fevereiro</option>
+                                <option value="3">03 - Março</option>
+                                <option value="4">04 - Abril</option>
+                                <option value="5">05 - Maio</option>
+                                <option value="6">06 - Junho</option>
+                                <option value="7">07 - Julho</option>
+                                <option value="8">08 - Agosto</option>
+                                <option value="9">09 - Setembro</option>
+                                <option value="10">10 - Outubro</option>
+                                <option value="11">11 - Novembro</option>
+                                <option value="12">12 - Dezembro</option>
+                            </select>
+                        </div>
+
+                        <select id="dash-select-data-lancada" class="input-select-gray" style="margin-bottom:0; padding:8px 12px; max-width:240px;" onchange="setDashDatePeriod('especifica')">
+                            <option value="">-- Selecionar uma data lançada --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Filtro por Injetora -->
+                <div class="ui-card">
+                    <div class="form-row-half">
+                        <div>
+                            <span class="ui-label">🔍 DETALHAMENTO POR INJETORA (INJ-01 A INJ-12)</span>
+                            <select id="dash-select-maquina" class="input-select-gray" style="margin-bottom:0;" onchange="buildDashboardAnalyticsUI()">
+                                <option value="">-- Todas as Máquinas --</option>
+                                <option value="01">INJ-01</option>
+                                <option value="02">INJ-02</option>
+                                <option value="03">INJ-03</option>
+                                <option value="04">INJ-04</option>
+                                <option value="05">INJ-05</option>
+                                <option value="06">INJ-06</option>
+                                <option value="07">INJ-07</option>
+                                <option value="08">INJ-08</option>
+                                <option value="09">INJ-09</option>
+                                <option value="10">INJ-10</option>
+                                <option value="11">INJ-11</option>
+                                <option value="12">INJ-12</option>
+                            </select>
+                        </div>
+                        <div>
+                            <span class="ui-label">OPERADOR(ES) E PARADAS NA MÁQUINA SELECIONADA:</span>
+                            <div id="dash-info-operadores"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPIs -->
+                <div class="kpi-grid">
+                    <div class="ui-card kpi-card" style="border-left: 5px solid var(--primary-blue);">
+                        <span class="ui-label">OEE GLOBAL</span>
+                        <div id="dash-card-oee" class="kpi-value">0%</div>
+                    </div>
+                    <div class="ui-card kpi-card" style="border-left: 5px solid var(--danger);">
+                        <span class="ui-label">HORAS PARADAS</span>
+                        <div id="dash-card-parado" class="kpi-value">0h 0m</div>
+                    </div>
+                    <div class="ui-card kpi-card" style="border-left: 5px solid var(--success);">
+                        <span class="ui-label">TEMPO PRODUTIVO</span>
+                        <div id="dash-card-utilizado" class="kpi-value">0 hrs</div>
+                    </div>
+                    <div class="ui-card kpi-card" style="border-left: 5px solid var(--accent);">
+                        <span class="ui-label">APROVEITAMENTO</span>
+                        <div id="dash-txt-aproveitamento" class="kpi-value">0%</div>
+                    </div>
+                </div>
+
+                <!-- Gráfico Produção por Injetora -->
+                <div class="ui-card">
+                    <span class="ui-label">PRODUÇÃO REAL DE PEÇAS POR INJETORA (INJ-01 A INJ-12)</span>
+                    <div style="height: 260px; position: relative;">
+                        <canvas id="chartMaquinasInjetoras"></canvas>
+                    </div>
+                </div>
+
+                <!-- Gráficos Índices OEE e Balanço -->
+                <div class="form-row-half">
+                    <div class="ui-card">
+                        <span class="ui-label">ÍNDICES DO OEE</span>
+                        <div style="height: 230px; position: relative;">
+                            <canvas id="chartIndicesOEE"></canvas>
+                        </div>
+                    </div>
+                    <div class="ui-card">
+                        <span class="ui-label">BALANÇO CARGA MÁQUINA</span>
+                        <div style="height: 230px; position: relative;">
+                            <canvas id="chartBalançoCarga"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gráfico Pareto de Paradas -->
+                <div class="ui-card">
+                    <span id="lbl-pareto-titulo" class="ui-label">PARETO DE PARADAS (MINUTOS) - TODAS AS MÁQUINAS</span>
+                    <div style="height: 260px; position: relative;">
+                        <canvas id="chartParetoParadas"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ABA 2: APONTAMENTO DIÁRIO -->
+            <section id="calc" class="view-content active">
+                <h2 class="dashboard-title">Apontamento Diário de Produção</h2>
+
+                <div class="ui-card">
+                    <input type="hidden" id="entry-edit-id">
+
+                    <div class="section-title-blue">1. Identificação do Turno</div>
+                    <div class="form-row-half">
+                        <div>
+                            <label class="ui-label">Data *</label>
+                            <input type="date" id="form-data" class="input-text-white">
+                        </div>
+                        <div>
+                            <label class="ui-label">Nome do Operador</label>
+                            <input type="text" id="form-nome" class="input-text-white" placeholder="Ex: João Silva">
+                        </div>
+                    </div>
+
+                    <div class="form-row-half">
+                        <div>
+                            <label class="ui-label">Injetora (01 a 12) *</label>
+                            <select id="form-maq" class="input-select-gray">
+                                <option value="">-- Selecione a Máquina --</option>
+                                <option value="01">INJ-01</option>
+                                <option value="02">INJ-02</option>
+                                <option value="03">INJ-03</option>
+                                <option value="04">INJ-04</option>
+                                <option value="05">INJ-05</option>
+                                <option value="06">INJ-06</option>
+                                <option value="07">INJ-07</option>
+                                <option value="08">INJ-08</option>
+                                <option value="09">INJ-09</option>
+                                <option value="10">INJ-10</option>
+                                <option value="11">INJ-11</option>
+                                <option value="12">INJ-12</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="ui-label">Ordem de Produção (O.P.)</label>
+                            <input type="text" id="form-op" class="input-text-white" placeholder="Ex: OP-1234">
+                        </div>
+                    </div>
+
+                    <div class="section-title-blue">2. Dados do Produto e Parâmetros</div>
+                    <div class="form-row-half">
+                        <div>
+                            <label class="ui-label">Código do Produto * (Auto-preenche)</label>
+                            <input type="text" id="form-prod" class="input-text-white" placeholder="Ex: PROD-101">
+                        </div>
+                        <div>
+                            <label class="ui-label">Número de Cavidades *</label>
+                            <input type="number" id="form-cav" class="input-text-white" placeholder="Ex: 4">
+                        </div>
+                    </div>
+
+                    <div class="form-row-half">
+                        <div>
+                            <label class="ui-label">Ciclo (Segundos) *</label>
+                            <input type="number" step="0.1" id="form-ciclo" class="input-text-white" placeholder="Ex: 15.5">
+                        </div>
+                        <div>
+                            <label class="ui-label">Peças Boas Produzidas (Real) *</label>
+                            <input type="number" id="form-real" class="input-text-white" placeholder="Ex: 1200">
+                        </div>
+                    </div>
+
+                    <div class="form-row-half">
+                        <div>
+                            <label class="ui-label">Refugo Processo (Peças)</label>
+                            <input type="number" id="form-refugo" class="input-text-white" value="0">
+                        </div>
+                        <div>
+                            <label class="ui-label">Refugo Setup (Peças)</label>
+                            <input type="number" id="form-refugo-setup" class="input-text-white" value="0">
+                        </div>
+                    </div>
+
+                    <div class="section-title-blue">3. Horários e Paradas de Máquina</div>
+                    <div class="form-row-half">
+                        <div>
+                            <label class="ui-label">Início do Turno *</label>
+                            <input type="time" id="form-ini" class="input-text-white">
+                        </div>
+                        <div>
+                            <label class="ui-label">Fim do Turno *</label>
+                            <input type="time" id="form-fim" class="input-text-white">
+                        </div>
+                    </div>
+
+                    <label class="ui-label">Adicionar Parada</label>
+                    <select id="select-motivo-parada" class="input-select-gray" onchange="aoSelecionarMotivoParada()">
+                        <option value="">-- Clique para escolher uma parada --</option>
+                    </select>
+
+                    <!-- Painel de Inclusão de Parada -->
+                    <div id="painel-adicionar-parada" style="display:none; background:#f8fafc; padding:14px; border-radius:10px; border:1px solid #cbd5e1; margin-bottom:14px;">
+                        <div id="lbl-motivo-selecionado" style="font-weight:700; color:var(--primary-blue); font-size:0.88rem; margin-bottom:10px;"></div>
+                        <div class="form-row-half">
+                            <div>
+                                <label class="ui-label">Início Parada</label>
+                                <input type="time" id="temp-parada-ini" class="input-text-white" value="00:00">
+                            </div>
+                            <div>
+                                <label class="ui-label">Fim Parada</label>
+                                <input type="time" id="temp-parada-fim" class="input-text-white" value="00:00">
+                            </div>
+                        </div>
+                        <label class="ui-label">Observação da Parada (Opcional)</label>
+                        <input type="text" id="temp-parada-desc" class="input-text-white" placeholder="Detalhe o ocorrido...">
+                        <button type="button" class="btn-submit-system" style="background:var(--btn-green);" onclick="confirmarAdicaoParada()">+ CONFIRMAR PARADA</button>
+                    </div>
+
+                    <!-- Lista de Paradas Lançadas -->
+                    <div id="wrapper-paradas-dinamicas" style="margin-bottom: 12px;"></div>
+
+                    <div style="background:#f1f5f9; padding:10px 14px; border-radius:8px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-weight:700; font-size:0.85rem; color:#475569;">TEMPO TOTAL PARADO:</span>
+                        <span id="display-total-parada" style="font-weight:800; color:var(--danger); font-size:1rem;">00:00</span>
+                        <input type="hidden" id="form-total-parada" value="00:00">
+                    </div>
+
+                    <label class="ui-label">Observações Gerais do Turno</label>
+                    <input type="text" id="form-obs" class="input-text-white" placeholder="Anotações gerais...">
+
+                    <!-- Display de OEE -->
+                    <div class="oee-box-display">
+                        <span style="font-size:0.8rem; text-transform:uppercase; opacity:0.9;">Eficiência Calculada (OEE)</span>
+                        <span id="oee-pct">0%</span>
+                        <span id="oee-target" style="font-size:0.85rem; opacity:0.9;">meta=0</span>
+                    </div>
+
+                    <button id="btn-save-production" class="btn-submit-system">SALVAR REGISTRO</button>
+                    <button id="btn-cancel-edit" class="btn-submit-system" style="display:none; background:#64748b; margin-top:10px;">CANCELAR EDIÇÃO</button>
+                    <button id="btn-delete-entry" class="btn-submit-system" style="display:none; background:var(--danger); margin-top:10px;">EXCLUIR REGISTRO</button>
+                </div>
+            </section>
+
+            <!-- ABA 3: RELATÓRIO GERAL -->
+            <section id="rel" class="view-content">
+                <h2 class="dashboard-title">Relatório Geral de Produção</h2>
+
+                <div class="ui-card">
+                    <button id="btn-trigger-csv-export" class="btn-export-green">📥 EXPORTAR RELATÓRIO CSV (EXCEL)</button>
+
+                    <div class="form-row-half">
+                        <div>
+                            <label class="ui-label">Data Lançada</label>
+                            <select id="filter-launch-date" class="input-select-gray">
+                                <option value="">Todas as datas lançadas</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="ui-label">Filtrar Máquina</label>
+                            <input type="text" id="filter-maq" class="input-text-white" placeholder="Ex: 01">
+                        </div>
+                    </div>
+
+                    <div class="form-row-half">
+                        <div>
+                            <label class="ui-label">Data Início</label>
+                            <input type="date" id="filter-start-date" class="input-text-white">
+                        </div>
+                        <div>
+                            <label class="ui-label">Data Fim</label>
+                            <input type="date" id="filter-end-date" class="input-text-white">
+                        </div>
+                    </div>
+
+                    <div class="form-row-half">
+                        <div>
+                            <label class="ui-label">Filtrar Produto</label>
+                            <input type="text" id="filter-prod" class="input-text-white" placeholder="Código do produto...">
+                        </div>
+                        <div id="box-filter-user-adm" style="display:none;">
+                            <label class="ui-label">Filtrar Operador (E-mail)</label>
+                            <input type="text" id="filter-user" class="input-text-white" placeholder="E-mail do operador...">
+                        </div>
+                    </div>
+
+                    <div class="table-scroll-holder">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Operador</th>
+                                    <th>Máq.</th>
+                                    <th>Produto</th>
+                                    <th>O.P.</th>
+                                    <th>Início</th>
+                                    <th>Fim</th>
+                                    <th>Real</th>
+                                    <th>Refugo</th>
+                                    <th>Ref. Setup</th>
+                                    <th>Cav.</th>
+                                    <th>Ciclo</th>
+                                    <th>OEE</th>
+                                    <th>Parado</th>
+                                    <th>Detalhamento Paradas</th>
+                                    <th>Obs</th>
+                                    <th>Usuário</th>
+                                    <th>Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-entries-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ABA 4: USUÁRIOS (SOMENTE ADMIN) -->
+            <section id="adm" class="view-content">
+                <h2 class="dashboard-title">Gerenciamento de Usuários</h2>
+
+                <div class="ui-card">
+                    <div class="section-title-blue">Cadastrar Novo Operador (Senha Padrão: 123456)</div>
+                    <div class="form-row-half">
+                        <div>
+                            <input type="email" id="adm-new-user-email" class="input-text-white" placeholder="E-mail do novo operador">
+                        </div>
+                        <div>
+                            <button id="btn-create-operator" class="btn-submit-system">CADASTRAR OPERADOR</button>
+                        </div>
+                    </div>
+
+                    <div class="table-scroll-holder" style="margin-top: 16px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>E-mail</th>
+                                    <th>Senha Inicial</th>
+                                    <th>Perfil</th>
+                                    <th>Excluir</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-users-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- FIREBASE SDKs (Compat v10 para manter compatibilidade total com app.js) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <!-- SCRIPT PRINCIPAL -->
+    <script src="app.js"></script>
+</body>
+</html>
