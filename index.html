@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PROD-TECH | Controle de Produção e OEE</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="./style.css?v=4">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -25,7 +25,7 @@
     <div id="auth-screen" class="fullscreen-gate" style="display: flex;">
         <div class="gate-card">
             <div class="gate-title" style="color: var(--primary-blue);">PROD-TECH</div>
-            <p style="color:#64748b; font-size:0.88rem; margin-bottom:16px;">Acesso ao Controle de Produção</p>
+            <p id="login-status-msg" style="color:#64748b; font-size:0.88rem; margin-bottom:16px;">Conectando ao Google Planilhas...</p>
             <div id="login-erro-banner" style="display:none; background:#fee2e2; color:#b91c1c; padding:10px; border-radius:8px; font-size:0.85rem; margin-bottom:12px;"></div>
             <input type="email" id="login-email" class="input-text-white" placeholder="E-mail">
             <input type="password" id="login-senha" class="input-text-white" placeholder="Senha">
@@ -57,7 +57,7 @@
                 <div id="user-display" style="font-size: 0.78rem; color: #94a3b8; text-align: right; line-height: 1.4;">
                     Carregando...
                 </div>
-                <button onclick="triggerSystemLogout()" style="background: var(--danger); color: white; justify-content: center; font-weight: 700;">
+                <button onclick="triggerSystemLogout()" style="background: var(--danger); color: white; justify-content: center; font-weight: 700; padding: 10px; border: none; border-radius: 8px; cursor: pointer;">
                     Sair ➔
                 </button>
             </div>
@@ -324,7 +324,10 @@
                 <h2 class="dashboard-title">Relatório Geral de Produção</h2>
 
                 <div class="ui-card">
-                    <button id="btn-trigger-csv-export" class="btn-export-green">📥 EXPORTAR RELATÓRIO CSV (EXCEL)</button>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;">
+                        <button id="btn-trigger-csv-export" class="btn-export-green" style="flex:1; margin-bottom:0;">📥 EXPORTAR RELATÓRIO CSV</button>
+                        <button onclick="sincronizarDadosGoogleSheets(true)" class="btn-submit-system" style="flex:1; background:var(--primary-blue);">🔄 ATUALIZAR DADOS DA PLANILHA</button>
+                    </div>
 
                     <div class="form-row-half">
                         <div>
@@ -425,12 +428,7 @@
         </main>
     </div>
 
-    <!-- FIREBASE SDKs (Compat v10 para manter compatibilidade total com app.js) -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-
     <!-- SCRIPT PRINCIPAL -->
-    <script src="app.js"></script>
+    <script src="./app.js?v=4"></script>
 </body>
 </html>
