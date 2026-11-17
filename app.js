@@ -24,6 +24,47 @@ function cleanMachineCode(input) {
     return pad2(digitsOnly);
 }
 
+// HELPER: Limpa horários vindos do Google Sheets (ex: "1899-12-30T09:36:28.000Z" -> "09:36")
+function formatSheetTime(val) {
+    if (!val) return "00:00";
+    const str = String(val).trim();
+    if (str.includes("T")) {
+        const d = new Date(str);
+        if (!isNaN(d.getTime())) {
+            const hh = String(d.getUTCHours()).padStart(2, '0');
+            const mm = String(d.getUTCMinutes()).padStart(2, '0');
+            return `${hh}:${mm}`;
+        }
+    }
+    const match = str.match(/(\d{1,2}):(\d{2})/);
+    if (match) return `${match[1].padStart(2, '0')}:${match[2]}`;
+    return "00:00";
+}
+
+// HELPER: Limpa datas vindas do Google Sheets (ex: ISO ou DD/MM/YYYY -> "YYYY-MM-DD")
+function formatSheetDate(val) {
+    if (!val) return "";
+    const str = String(val).trim();
+    if (str.includes("T")) return str.split("T")[0];
+    if (str.includes("/")) {
+        const p = str.split("/");
+        if (p.length === 3) return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
+    }
+    return str;
+}
+
+// HELPER: Limpa OEE vindo do Google Sheets (ex: "0.85" ou 0.85 -> "85%")
+function formatSheetOEE(val) {
+    if (val === null || val === undefined || val === "") return "0%";
+    const str = String(val).trim();
+    if (str.includes("%")) return str;
+    const num = parseFloat(str.replace(",", "."));
+    if (!isNaN(num)) {
+        return num <= 1.5 && num > 0 ? `${Math.round(num * 100)}%` : `${Math.round(num)}%`;
+    }
+    return "0%";
+}
+
 // Variáveis Globais dos Gráficos (Chart.js)
 let instChartBalanço = null;
 let instChartIndices = null;
@@ -84,11 +125,22 @@ async function apiSheets(payload) {
     return await response.json();
 }
 
+function normalizarRegistrosProducao(lista) {
+    return (lista || []).map(item => ({
+        ...item,
+        data: formatSheetDate(item.data),
+        inicioTurno: formatSheetTime(item.inicioTurno),
+        fimTurno: formatSheetTime(item.fimTurno),
+        totalParado: formatSheetTime(item.totalParado),
+        efetividade: formatSheetOEE(item.efetividade)
+    }));
+}
+
 async function sincronizarDadosGoogleSheets(mostrarAlerta = false) {
     try {
         const res = await apiSheets({ action: "getAll" });
         if (res.status === "ok") {
-            cacheDataRecords = res.producao || [];
+            cacheDataRecords = normalizarRegistrosProducao(res.producao);
             cacheProdutosList = res.produtos || [];
             cacheUsuariosList = res.usuarios || [];
 
@@ -135,7 +187,7 @@ async function verifyInitialSetupSystem() {
     try {
         const res = await apiSheets({ action: "getAll" });
         if (res.status === "ok") {
-            cacheDataRecords = res.producao || [];
+            cacheDataRecords = normalizarRegistrosProducao(res.producao);
             cacheProdutosList = res.produtos || [];
             cacheUsuariosList = res.usuarios || [];
 
@@ -756,15 +808,21 @@ const createOpBtn = document.getElementById('btn-create-operator');
 if (createOpBtn) {
     createOpBtn.onclick = async () => {
         const email = document.getElementById('adm-new-user-email').value.trim().toLowerCase();
-        if (!email) { alert("Insira um e-mail válido!"); return; }
+        const senhaEl = document.getElementById('adm-new-user-senha');
+        const senha = senhaEl ? senhaEl.value.trim() : "123456";
+
+        if (!email || !email.includes('@')) { alert("Insira um e-mail válido!"); return; }
+        if (!senha || senha.length < 4) { alert("Insira uma senha com pelo menos 4 caracteres!"); return; }
+
         createOpBtn.disabled = true;
         createOpBtn.innerText = "CADASTRANDO...";
         try {
-            const res = await apiSheets({ action: "addUser", email, senha: "123456", role: "operador" });
+            const res = await apiSheets({ action: "addUser", email, senha, role: "operador" });
             if (res.status === "ok") {
                 await sincronizarDadosGoogleSheets();
                 alert("Operador cadastrado com sucesso na planilha!");
                 document.getElementById('adm-new-user-email').value = "";
+                if (senhaEl) senhaEl.value = "";
             } else {
                 alert(res.message || "Erro ao cadastrar operador.");
             }
@@ -877,7 +935,7 @@ function buildDashboardAnalyticsUI() {
     }
 
     let totalMinutosParados = 0;
-    let totalHorasTrabalhadas = 0;
+    let totalMinutosTurnoBruto = 0;
     let somaOEE = 0;
     let contRegistrosOEE = 0;
     let mapaParadas = {};
@@ -892,13 +950,17 @@ function buildDashboardAnalyticsUI() {
             const stringsFim = String(i.fimTurno).split(':').map(Number);
             let dMin = (stringsFim[0] * 60 + stringsFim[1]) - (stringsIni[0] * 60 + stringsIni[1]);
             if (dMin < 0) dMin += 1440;
-            totalHorasTrabalhadas += (dMin / 60);
+            totalMinutosTurnoBruto += dMin;
         }
         if (i.efetividade) {
             let valorNum = parseFloat(String(i.efetividade).replace('%', ''));
             if (!isNaN(valorNum)) { somaOEE += valorNum; contRegistrosOEE++; }
         }
     });
+
+    // Desconta as horas paradas do tempo total do turno para obter o Tempo Produtivo Líquido
+    let totalMinutosProdutivos = Math.max(0, totalMinutosTurnoBruto - totalMinutosParados);
+    let totalHorasTrabalhadas = totalMinutosProdutivos / 60;
 
     dadosParaParadasEOperador.forEach(i => {
         if (Array.isArray(i.paradasMapeadas)) {
@@ -915,8 +977,15 @@ function buildDashboardAnalyticsUI() {
 
     const hParadas = Math.floor(totalMinutosParados / 60);
     const mParadas = totalMinutosParados % 60;
-    if (document.getElementById('dash-card-parado')) document.getElementById('dash-card-parado').innerText = `${hParadas}h ${mParadas}m`;
-    if (document.getElementById('dash-card-utilizado')) document.getElementById('dash-card-utilizado').innerText = `${Math.round(totalHorasTrabalhadas)} hrs`;
+    if (document.getElementById('dash-card-parado')) {
+        document.getElementById('dash-card-parado').innerText = `${hParadas}h ${mParadas}m`;
+    }
+
+    const hProd = Math.floor(totalMinutosProdutivos / 60);
+    const mProd = totalMinutosProdutivos % 60;
+    if (document.getElementById('dash-card-utilizado')) {
+        document.getElementById('dash-card-utilizado').innerText = `${hProd}h ${mProd}m`;
+    }
     
     let oeeGlobalFinal = contRegistrosOEE > 0 ? Math.round(somaOEE / contRegistrosOEE) : 0;
     if (document.getElementById('dash-card-oee')) document.getElementById('dash-card-oee').innerText = `${oeeGlobalFinal}%`;
