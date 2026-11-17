@@ -151,7 +151,7 @@
 
                 <!-- Gráfico Produção por Injetora -->
                 <div class="ui-card">
-                    <span class="ui-label">PRODUÇÃO REAL DE PEÇAS POR INJETORA (INJ-01 A INJ-12)</span>
+                    <span class="ui-label">PRODUÇÃO REAL DE PEÇAS POR INJETORA (INJ-01 A INJ-13)</span>
                     <div style="height: 260px; position: relative;">
                         <canvas id="chartMaquinasInjetoras"></canvas>
                     </div>
@@ -203,7 +203,7 @@
 
                     <div class="form-row-half">
                         <div>
-                            <label class="ui-label">Injetora (01 a 12) *</label>
+                            <label class="ui-label">Injetora (01 a 13) *</label>
                             <select id="form-maq" class="input-select-gray">
                                 <option value="">-- Selecione a Máquina --</option>
                                 <option value="01">INJ-01</option>
@@ -222,8 +222,8 @@
                             </select>
                         </div>
                         <div>
-                            <label class="ui-label">Ordem de Produção (O.P.)</label>
-                            <input type="text" id="form-op" class="input-text-white" placeholder="Ex: OP-1234">
+                            <label class="ui-label">Nº Ordem de Produção (O.P.)</label>
+                            <input type="text" id="form-op" class="input-text-white" placeholder="Ex: 000000">
                         </div>
                     </div>
 
@@ -231,7 +231,7 @@
                     <div class="form-row-half">
                         <div>
                             <label class="ui-label">Código do Produto * (Auto-preenche)</label>
-                            <input type="text" id="form-prod" class="input-text-white" placeholder="Ex: PROD-101">
+                            <input type="text" id="form-prod" class="input-text-white" placeholder="Ex: 00.000.000">
                         </div>
                         <div>
                             <label class="ui-label">Número de Cavidades *</label>
@@ -242,7 +242,7 @@
                     <div class="form-row-half">
                         <div>
                             <label class="ui-label">Ciclo (Segundos) *</label>
-                            <input type="number" step="0.1" id="form-ciclo" class="input-text-white" placeholder="Ex: 15.5">
+                            <input type="number" step="0.1" id="form-ciclo" class="input-text-white" placeholder="Ex: 15">
                         </div>
                         <div>
                             <label class="ui-label">Peças Boas Produzidas (Real) *</label>
