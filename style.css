@@ -144,6 +144,51 @@ html, body {
 }
 
 /* ==========================================
+   FILTROS POR COLUNA DA TABELA PROGRAMAÇÃO
+   ========================================== */
+
+.filter-row th {
+    background-color: #e2e8f0;
+    padding: 6px 8px;
+    border-bottom: 1px solid #cbd5e1;
+}
+
+.col-filter-input {
+    width: 100%;
+    min-width: 75px;
+    padding: 6px 8px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: #1e293b;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    outline: none;
+}
+
+.col-filter-input:focus {
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.btn-clear-col-filters {
+    width: 100%;
+    padding: 6px 10px;
+    background: #64748b;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+}
+
+.btn-clear-col-filters:hover {
+    background: #475569;
+}
+
+/* ==========================================
    PAINEL DE ACOMPANHAMENTO DA O.P. PROGRAMADA
    ========================================== */
 
