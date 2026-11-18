@@ -39,7 +39,6 @@ html, body {
     position: relative;
 }
 
-/* Sidebar Fixa na Esquerda ocupando 100% da altura */
 .sidebar, sidebar, #sidebar {
     position: fixed !important;
     top: 0 !important;
@@ -108,7 +107,6 @@ html, body {
     gap: 10px;
 }
 
-/* Área de Conteúdo Principal alinhada no topo direito */
 .main-content, .content, #main-content {
     margin-left: 250px !important;
     padding: 24px 24px 24px 30px;
@@ -143,6 +141,79 @@ html, body {
     border: 1px solid #e2e8f0;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     width: 100%;
+}
+
+/* ==========================================
+   PAINEL DE ACOMPANHAMENTO DA O.P. PROGRAMADA
+   ========================================== */
+
+.op-progress-banner {
+    background: #eff6ff;
+    border: 1.5px solid #93c5fd;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+}
+
+.op-progress-banner.completed {
+    background: #f0fdf4;
+    border-color: #86efac;
+}
+
+.op-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+    font-weight: 800;
+    font-size: 0.9rem;
+    color: #1e3a8a;
+}
+
+.op-badge-open {
+    background: #dbeafe;
+    color: #1d4ed8;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+.op-badge-done {
+    background: #dcfce7;
+    color: #15803d;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+.op-progress-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+}
+
+.op-stat-item {
+    background: white;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    text-align: center;
+}
+
+.op-stat-label {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #64748b;
+    margin-bottom: 3px;
+}
+
+.op-stat-num {
+    font-size: 1.15rem;
+    font-weight: 900;
+    color: #0f172a;
 }
 
 /* ==========================================
@@ -316,10 +387,9 @@ td {
     padding: 12px 10px;
     border-bottom: 1px solid #f1f5f9;
     color: #1e293b;
-    vertical-align: top;
+    vertical-align: middle;
 }
 
-/* Telas de Login / Autenticação */
 .fullscreen-gate {
     position: fixed;
     top: 0;
@@ -371,5 +441,9 @@ td {
     .form-row-half {
         grid-template-columns: 1fr !important;
         gap: 0 !important;
+    }
+
+    .op-progress-grid {
+        grid-template-columns: repeat(2, 1fr);
     }
 }
