@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PROD-TECH | Controle de Produção e OEE</title>
-    <link rel="stylesheet" href="./style.css?v=4">
+    <link rel="stylesheet" href="./style.css?v=7">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -42,6 +42,9 @@
 
             <button id="tab-link-dash" class="sidebar-nav-item" onclick="switchViewTab('dash')">
                 📊 DASHBOARD HOME
+            </button>
+            <button id="tab-link-prog" class="sidebar-nav-item" onclick="switchViewTab('prog')">
+                📅 PROGRAMAR
             </button>
             <button id="tab-link-calc" class="sidebar-nav-item active" onclick="switchViewTab('calc')">
                 ✏️ APONTAMENTO (DIÁRIO)
@@ -104,7 +107,7 @@
                 <div class="ui-card">
                     <div class="form-row-half">
                         <div>
-                            <span class="ui-label">🔍 DETALHAMENTO POR INJETORA (INJ-01 A INJ-12)</span>
+                            <span class="ui-label">🔍 DETALHAMENTO POR INJETORA (INJ-01 A INJ-13)</span>
                             <select id="dash-select-maquina" class="input-select-gray" style="margin-bottom:0;" onchange="buildDashboardAnalyticsUI()">
                                 <option value="">-- Todas as Máquinas --</option>
                                 <option value="01">INJ-01</option>
@@ -141,7 +144,7 @@
                     </div>
                     <div class="ui-card kpi-card" style="border-left: 5px solid var(--success);">
                         <span class="ui-label">TEMPO PRODUTIVO</span>
-                        <div id="dash-card-utilizado" class="kpi-value">0 hrs</div>
+                        <div id="dash-card-utilizado" class="kpi-value">0h 0m</div>
                     </div>
                     <div class="ui-card kpi-card" style="border-left: 5px solid var(--accent);">
                         <span class="ui-label">APROVEITAMENTO</span>
@@ -178,6 +181,97 @@
                     <span id="lbl-pareto-titulo" class="ui-label">PARETO DE PARADAS (MINUTOS) - TODAS AS MÁQUINAS</span>
                     <div style="height: 260px; position: relative;">
                         <canvas id="chartParetoParadas"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- NOVA ABA: PROGRAMAR PRODUÇÃO / O.P. -->
+            <section id="prog" class="view-content">
+                <h2 class="dashboard-title">Programação de Ordem de Produção (O.P.)</h2>
+
+                <div class="ui-card">
+                    <input type="hidden" id="prog-edit-id">
+                    <div class="section-title-blue">Cadastrar / Editar Ordem Programada</div>
+
+                    <div class="form-row-half">
+                        <div>
+                            <label class="ui-label">Data de Programação *</label>
+                            <input type="date" id="prog-data" class="input-text-white">
+                        </div>
+                        <div>
+                            <label class="ui-label">Injetora (INJ) *</label>
+                            <select id="prog-maq" class="input-select-gray">
+                                <option value="">-- Selecione a Injetora --</option>
+                                <option value="01">INJ-01</option>
+                                <option value="02">INJ-02</option>
+                                <option value="03">INJ-03</option>
+                                <option value="04">INJ-04</option>
+                                <option value="05">INJ-05</option>
+                                <option value="06">INJ-06</option>
+                                <option value="07">INJ-07</option>
+                                <option value="08">INJ-08</option>
+                                <option value="09">INJ-09</option>
+                                <option value="10">INJ-10</option>
+                                <option value="11">INJ-11</option>
+                                <option value="12">INJ-12</option>
+                                <option value="13">INJ-13</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row-half">
+                        <div>
+                            <label class="ui-label">Número da O.P. *</label>
+                            <input type="text" id="prog-op" class="input-text-white" placeholder="Ex: 43221">
+                        </div>
+                        <div>
+                            <label class="ui-label">Número do Lote *</label>
+                            <input type="text" id="prog-lote" class="input-text-white" placeholder="Ex: L-2026-01">
+                        </div>
+                    </div>
+
+                    <div class="form-row-half">
+                        <div>
+                            <label class="ui-label">Código do Produto *</label>
+                            <input type="text" id="prog-cod" class="input-text-white" placeholder="Ex: 00.500.432">
+                        </div>
+                        <div>
+                            <label class="ui-label">Qtde a Produzir (Peças) *</label>
+                            <input type="number" id="prog-qtd" class="input-text-white" placeholder="Ex: 15000">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="ui-label">Descrição do Produto *</label>
+                        <input type="text" id="prog-desc" class="input-text-white" placeholder="Ex: Tampa Plástica 50mm Azul">
+                    </div>
+
+                    <button id="btn-save-programacao" class="btn-submit-system">SALVAR PROGRAMAÇÃO</button>
+                    <button id="btn-cancel-prog" class="btn-submit-system" style="display:none; background:#64748b; margin-top:10px;">CANCELAR EDIÇÃO</button>
+                </div>
+
+                <!-- Tabela de Ordens Programadas e Saldo Faltante -->
+                <div class="ui-card">
+                    <div class="section-title-blue">Ordens Programadas & Acompanhamento de Saldo</div>
+                    <div class="table-scroll-holder">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>INJ</th>
+                                    <th>Nº O.P.</th>
+                                    <th>Lote</th>
+                                    <th>Código</th>
+                                    <th>Descrição do Produto</th>
+                                    <th>Programado</th>
+                                    <th>Produzido</th>
+                                    <th>Faltante</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-programacao-body"></tbody>
+                        </table>
                     </div>
                 </div>
             </section>
@@ -222,8 +316,36 @@
                             </select>
                         </div>
                         <div>
-                            <label class="ui-label">Nº Ordem de Produção (O.P.)</label>
-                            <input type="text" id="form-op" class="input-text-white" placeholder="Ex: 000000">
+                            <label class="ui-label">Nº Ordem de Produção (O.P.) * (Auto-preenche programação)</label>
+                            <input type="text" id="form-op" list="datalist-ops-programadas" class="input-text-white" placeholder="Digite ou selecione a O.P.">
+                            <datalist id="datalist-ops-programadas"></datalist>
+                        </div>
+                    </div>
+
+                    <!-- PAINEL DE SALDO DA O.P. PROGRAMADA -->
+                    <div id="painel-saldo-op" class="op-progress-banner" style="display: none;">
+                        <div class="op-progress-header">
+                            <span id="op-banner-titulo">📋 O.P. PROGRAMADA: -</span>
+                            <span id="op-banner-status" class="op-badge-open">EM ANDAMENTO</span>
+                        </div>
+                        <div id="op-banner-subtitulo" style="font-size: 0.82rem; color: #475569; margin-bottom: 10px;"></div>
+                        <div class="op-progress-grid">
+                            <div class="op-stat-item">
+                                <span class="op-stat-label">PROGRAMADO</span>
+                                <span id="op-stat-prog" class="op-stat-num">0</span>
+                            </div>
+                            <div class="op-stat-item">
+                                <span class="op-stat-label">JÁ PRODUZIDO</span>
+                                <span id="op-stat-ant" class="op-stat-num">0</span>
+                            </div>
+                            <div class="op-stat-item">
+                                <span class="op-stat-label">ESTE TURNO</span>
+                                <span id="op-stat-atual" class="op-stat-num" style="color: var(--primary-blue);">0</span>
+                            </div>
+                            <div class="op-stat-item">
+                                <span class="op-stat-label">FALTANTE P/ CONCLUIR</span>
+                                <span id="op-stat-faltante" class="op-stat-num" style="color: var(--danger);">0</span>
+                            </div>
                         </div>
                     </div>
 
@@ -231,34 +353,44 @@
                     <div class="form-row-half">
                         <div>
                             <label class="ui-label">Código do Produto * (Auto-preenche)</label>
-                            <input type="text" id="form-prod" class="input-text-white" placeholder="Ex: 00.000.000">
+                            <input type="text" id="form-prod" class="input-text-white" placeholder="Ex: 00.500.432">
                         </div>
+                        <div>
+                            <label class="ui-label">Número do Lote</label>
+                            <input type="text" id="form-lote" class="input-text-white" placeholder="Ex: L-2026-01">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="ui-label">Descrição do Produto</label>
+                        <input type="text" id="form-prod-desc" class="input-text-white" placeholder="Descrição do produto...">
+                    </div>
+
+                    <div class="form-row-half">
                         <div>
                             <label class="ui-label">Número de Cavidades *</label>
                             <input type="number" id="form-cav" class="input-text-white" placeholder="Ex: 4">
                         </div>
-                    </div>
-
-                    <div class="form-row-half">
                         <div>
                             <label class="ui-label">Ciclo (Segundos) *</label>
                             <input type="number" step="0.1" id="form-ciclo" class="input-text-white" placeholder="Ex: 15">
                         </div>
-                        <div>
-                            <label class="ui-label">Peças Boas Produzidas (Real) *</label>
-                            <input type="number" id="form-real" class="input-text-white" placeholder="Ex: 1200">
-                        </div>
                     </div>
 
                     <div class="form-row-half">
                         <div>
+                            <label class="ui-label">Peças Boas Produzidas (Real) *</label>
+                            <input type="number" id="form-real" class="input-text-white" placeholder="Ex: 1200">
+                        </div>
+                        <div>
                             <label class="ui-label">Refugo Processo (Peças)</label>
                             <input type="number" id="form-refugo" class="input-text-white" value="0">
                         </div>
-                        <div>
-                            <label class="ui-label">Refugo Setup (Peças)</label>
-                            <input type="number" id="form-refugo-setup" class="input-text-white" value="0">
-                        </div>
+                    </div>
+
+                    <div>
+                        <label class="ui-label">Refugo Setup (Peças)</label>
+                        <input type="number" id="form-refugo-setup" class="input-text-white" value="0">
                     </div>
 
                     <div class="section-title-blue">3. Horários e Paradas de Máquina</div>
@@ -374,7 +506,9 @@
                                     <th>Operador</th>
                                     <th>Máq.</th>
                                     <th>Produto</th>
+                                    <th>Descrição</th>
                                     <th>O.P.</th>
+                                    <th>Lote</th>
                                     <th>Início</th>
                                     <th>Fim</th>
                                     <th>Real</th>
@@ -401,22 +535,25 @@
                 <h2 class="dashboard-title">Gerenciamento de Usuários</h2>
 
                 <div class="ui-card">
-                    <div class="section-title-blue">Cadastrar Novo Operador (Senha Padrão: 123456)</div>
+                    <div class="section-title-blue">Cadastrar Novo Operador</div>
                     <div class="form-row-half">
                         <div>
-                            <input type="email" id="adm-new-user-email" class="input-text-white" placeholder="E-mail do novo operador">
+                            <label class="ui-label">E-mail do Operador</label>
+                            <input type="email" id="adm-new-user-email" class="input-text-white" placeholder="Ex: operador@empresa.com">
                         </div>
                         <div>
-                            <button id="btn-create-operator" class="btn-submit-system">CADASTRAR OPERADOR</button>
+                            <label class="ui-label">Senha do Operador</label>
+                            <input type="text" id="adm-new-user-senha" class="input-text-white" placeholder="Digite a senha (mín. 4 caracteres)">
                         </div>
                     </div>
+                    <button id="btn-create-operator" class="btn-submit-system">CADASTRAR OPERADOR</button>
 
                     <div class="table-scroll-holder" style="margin-top: 16px;">
                         <table>
                             <thead>
                                 <tr>
                                     <th>E-mail</th>
-                                    <th>Senha Inicial</th>
+                                    <th>Senha</th>
                                     <th>Perfil</th>
                                     <th>Excluir</th>
                                 </tr>
@@ -431,6 +568,6 @@
     </div>
 
     <!-- SCRIPT PRINCIPAL -->
-    <script src="./app.js?v=4"></script>
+    <script src="./app.js?v=7"></script>
 </body>
 </html>
