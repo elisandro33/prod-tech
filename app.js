@@ -23,6 +23,14 @@ function cleanMachineCode(input) {
     return pad2(digitsOnly);
 }
 
+function formatPtNumber(val, decimals = 1) {
+    const num = Number(val) || 0;
+    return num.toLocaleString('pt-BR', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+    });
+}
+
 function formatSheetTime(val) {
     if (!val) return "00:00";
     const str = String(val).trim();
@@ -143,7 +151,9 @@ function normalizarProgramacao(lista) {
         lote: String(item.lote || "").trim(),
         codigoProduto: String(item.codigoProduto || "").trim().toUpperCase(),
         descricaoProduto: String(item.descricaoProduto || "").trim(),
-        qtdProgramada: Number(item.qtdProgramada) || 0
+        qtdProgramada: Number(item.qtdProgramada) || 0,
+        horasDisponiveis: parseFloat(String(item.horasDisponiveis || 0).replace(",", ".")) || 0,
+        horasEstimadas: parseFloat(String(item.horasEstimadas || 0).replace(",", ".")) || 0
     }));
 }
 
@@ -178,7 +188,10 @@ async function sincronizarDadosGoogleSheets(mostrarAlerta = false) {
 }
 
 function buscarEPreencherProduto(codigoInput, destino = "apontamento") {
-    if (!codigoInput) return;
+    if (!codigoInput) {
+        if (destino === "programacao") atualizarEstimativaHorasCiclo();
+        return;
+    }
     const idProduto = codigoInput.trim().toUpperCase();
 
     const produto = cacheProdutosList.find(p => String(p.codigo).trim().toUpperCase() === idProduto);
@@ -200,6 +213,72 @@ function buscarEPreencherProduto(codigoInput, destino = "apontamento") {
             }
         }
     }
+
+    if (destino === "programacao") {
+        atualizarEstimativaHorasCiclo();
+    }
+}
+
+// ==========================================
+// ESTIMATIVA DE HORAS COM BASE NO CICLO (PROGRAMAR)
+// ==========================================
+function calcularHorasEstimadasProduto(codigoProduto, qtdProgramada) {
+    const codNorm = String(codigoProduto || "").trim().toUpperCase();
+    const qtd = Number(qtdProgramada) || 0;
+    if (!codNorm || qtd <= 0) return { horas: 0, encontrado: false };
+
+    const prod = cacheProdutosList.find(p => String(p.codigo).trim().toUpperCase() === codNorm);
+    if (!prod) return { horas: 0, encontrado: false };
+
+    const ciclo = parseFloat(String(prod.ciclo || 0).replace(",", ".")) || 0;
+    const cavidades = parseFloat(String(prod.cavidades || 0).replace(",", ".")) || 0;
+    if (ciclo <= 0 || cavidades <= 0) return { horas: 0, encontrado: false };
+
+    const pecasPorHora = (3600 / ciclo) * cavidades;
+    const horas = qtd / pecasPorHora;
+
+    return {
+        horas: Number(horas.toFixed(1)),
+        encontrado: true,
+        ciclo,
+        cavidades,
+        pecasPorHora: Math.round(pecasPorHora)
+    };
+}
+
+function atualizarEstimativaHorasCiclo() {
+    const txtEl = document.getElementById('txt-estimativa-ciclo');
+    if (!txtEl) return;
+
+    const cod = document.getElementById('prog-cod') ? document.getElementById('prog-cod').value : "";
+    const qtd = document.getElementById('prog-qtd') ? Number(document.getElementById('prog-qtd').value) : 0;
+    const hDisp = document.getElementById('prog-horas-disp') ? parseFloat(document.getElementById('prog-horas-disp').value) || 0 : 0;
+
+    if (!cod || qtd <= 0) {
+        txtEl.innerHTML = `Informe o <b>Código do Produto</b> e a <b>Qtde a Produzir</b> para calcular as horas estimadas.`;
+        return;
+    }
+
+    const est = calcularHorasEstimadasProduto(cod, qtd);
+    if (!est.encontrado) {
+        txtEl.innerHTML = `Produto <b>${cod.toUpperCase()}</b> ainda sem ciclo/cavidades cadastrados. Faça um apontamento deste código para gravar o ciclo automático.`;
+        return;
+    }
+
+    let comparativoHtml = "";
+    if (hDisp > 0) {
+        if (est.horas <= hDisp) {
+            comparativoHtml = `<span style="color: #15803d; font-weight: 800;">✅ Cabe dentro das ${formatPtNumber(hDisp)}h disponíveis</span>`;
+        } else {
+            const diff = est.horas - hDisp;
+            comparativoHtml = `<span style="color: #b91c1c; font-weight: 800;">⚠️ Excede em +${formatPtNumber(diff)}h as ${formatPtNumber(hDisp)}h disponíveis</span>`;
+        }
+    }
+
+    txtEl.innerHTML = `
+        Parâmetros do molde: <b>${est.cavidades} cavidades</b> · Ciclo: <b>${est.ciclo}s</b> (${est.pecasPorHora.toLocaleString('pt-BR')} pçs/hora)<br>
+        Tempo estimado para produzir <b>${qtd.toLocaleString('pt-BR')} peças</b>: <b style="font-size:1rem; color:#1d4ed8;">${formatPtNumber(est.horas)} horas</b> ${comparativoHtml ? ' · ' + comparativoHtml : ''}
+    `;
 }
 
 // ==========================================
@@ -286,7 +365,7 @@ function atualizarPainelSaldoOP() {
 
     painel.style.display = "block";
     document.getElementById('op-banner-titulo').innerText = `📋 O.P. ${prog.nrOp} | Lote: ${prog.lote || '-'} | INJ-${prog.maquina}`;
-    document.getElementById('op-banner-subtitulo').innerText = `Produto: ${prog.codigoProduto} - ${prog.descricaoProduto}`;
+    document.getElementById('op-banner-subtitulo').innerText = `Produto: ${prog.codigoProduto} - ${prog.descricaoProduto} | Horas Disp. Prog.: ${formatPtNumber(prog.horasDisponiveis)}h`;
 
     document.getElementById('op-stat-prog').innerText = prog.qtdProgramada.toLocaleString('pt-BR');
     document.getElementById('op-stat-ant').innerText = jaProduzido.toLocaleString('pt-BR');
@@ -315,18 +394,23 @@ if (saveProgBtn) {
         if (!authenticatedUserRef) return;
 
         const eid = document.getElementById('prog-edit-id').value;
-        const data = document.getElementById('prog-data').value;
+        const data = document.getElementById('prog-data').value.trim();
         const maquina = cleanMachineCode(document.getElementById('prog-maq').value);
         const nrOp = document.getElementById('prog-op').value.trim();
         const lote = document.getElementById('prog-lote').value.trim();
         const codigoProduto = document.getElementById('prog-cod').value.trim().toUpperCase();
         const descricaoProduto = document.getElementById('prog-desc').value.trim();
         const qtdProgramada = Number(document.getElementById('prog-qtd').value) || 0;
+        const horasDisponiveis = parseFloat(String(document.getElementById('prog-horas-disp').value).replace(",", ".")) || 0;
 
-        if (!data || !maquina || !nrOp || !codigoProduto || qtdProgramada <= 0) {
-            alert("Preencha Data, Injetora, Nº O.P., Código do Produto e Qtde a Produzir!");
+        // VALIDAÇÃO OBRIGATÓRIA DE TODOS OS CAMPOS
+        if (!data || !maquina || !nrOp || !lote || !codigoProduto || !descricaoProduto || qtdProgramada <= 0 || horasDisponiveis <= 0) {
+            alert("Todos os campos da programação são obrigatórios!\nPreencha: Data, Injetora, Nº O.P., Lote, Código do Produto, Qtde a Produzir, Descrição e Horas Disponíveis da Máquina.");
             return;
         }
+
+        const est = calcularHorasEstimadasProduto(codigoProduto, qtdProgramada);
+        const horasEstimadas = est.encontrado ? est.horas : 0;
 
         saveProgBtn.disabled = true;
         saveProgBtn.innerText = "SALVANDO PROGRAMAÇÃO...";
@@ -343,6 +427,8 @@ if (saveProgBtn) {
                     codigoProduto,
                     descricaoProduto,
                     qtdProgramada,
+                    horasDisponiveis,
+                    horasEstimadas,
                     criadoPor: authenticatedUserRef.email
                 }
             });
@@ -371,9 +457,11 @@ function resetFormProgramacao() {
     document.getElementById('prog-cod').value = "";
     document.getElementById('prog-desc').value = "";
     document.getElementById('prog-qtd').value = "";
+    document.getElementById('prog-horas-disp').value = "";
     document.getElementById('btn-cancel-prog').style.display = "none";
     document.getElementById('btn-save-programacao').innerText = "SALVAR PROGRAMAÇÃO";
     setTodayOnDateField();
+    atualizarEstimativaHorasCiclo();
 }
 
 const cancelProgBtn = document.getElementById('btn-cancel-prog');
@@ -388,16 +476,18 @@ function loadProgramacaoToEdit(p) {
     document.getElementById('prog-cod').value = p.codigoProduto;
     document.getElementById('prog-desc').value = p.descricaoProduto || "";
     document.getElementById('prog-qtd').value = p.qtdProgramada;
+    document.getElementById('prog-horas-disp').value = p.horasDisponiveis || "";
 
     document.getElementById('btn-cancel-prog').style.display = "block";
     document.getElementById('btn-save-programacao').innerText = "ALTERAR PROGRAMAÇÃO";
+    atualizarEstimativaHorasCiclo();
 }
 
 window.limparFiltrosProgramacao = function() {
     const ids = [
         'f-prog-data', 'f-prog-inj', 'f-prog-op', 'f-prog-lote',
-        'f-prog-cod', 'f-prog-desc', 'f-prog-qtd', 'f-prog-prod',
-        'f-prog-falt', 'f-prog-status'
+        'f-prog-cod', 'f-prog-desc', 'f-prog-hdisp', 'f-prog-hest',
+        'f-prog-qtd', 'f-prog-prod', 'f-prog-falt', 'f-prog-status'
     ];
     ids.forEach(id => {
         const el = document.getElementById(id);
@@ -422,6 +512,8 @@ function renderProgramacaoTable() {
     const fLote = getF('f-prog-lote');
     const fCod = getF('f-prog-cod');
     const fDesc = getF('f-prog-desc');
+    const fHdisp = getF('f-prog-hdisp');
+    const fHest = getF('f-prog-hest');
     const fQtd = getF('f-prog-qtd');
     const fProd = getF('f-prog-prod');
     const fFalt = getF('f-prog-falt');
@@ -436,6 +528,9 @@ function renderProgramacaoTable() {
             const dataFormatada = String(p.data).split('-').reverse().join('/');
             const injCode = cleanMachineCode(p.maquina);
 
+            const estCalc = calcularHorasEstimadasProduto(p.codigoProduto, p.qtdProgramada);
+            const horasEst = estCalc.encontrado ? estCalc.horas : (p.horasEstimadas || 0);
+
             return {
                 ...p,
                 produzido,
@@ -443,7 +538,8 @@ function renderProgramacaoTable() {
                 concluida,
                 statusText,
                 dataFormatada,
-                injCode
+                injCode,
+                horasEst
             };
         })
         .filter(item => {
@@ -453,6 +549,8 @@ function renderProgramacaoTable() {
             if (fLote && !String(item.lote || '').toLowerCase().includes(fLote)) return false;
             if (fCod && !String(item.codigoProduto).toLowerCase().includes(fCod)) return false;
             if (fDesc && !String(item.descricaoProduto || '').toLowerCase().includes(fDesc)) return false;
+            if (fHdisp && !formatPtNumber(item.horasDisponiveis).includes(fHdisp) && !String(item.horasDisponiveis).includes(fHdisp)) return false;
+            if (fHest && !formatPtNumber(item.horasEst).includes(fHest) && !String(item.horasEst).includes(fHest)) return false;
             if (fQtd && !String(item.qtdProgramada).includes(fQtd) && !item.qtdProgramada.toLocaleString('pt-BR').includes(fQtd)) return false;
             if (fProd && !String(item.produzido).includes(fProd) && !item.produzido.toLocaleString('pt-BR').includes(fProd)) return false;
             if (fFalt && !String(item.faltante).includes(fFalt) && !item.faltante.toLocaleString('pt-BR').includes(fFalt)) return false;
@@ -462,7 +560,7 @@ function renderProgramacaoTable() {
         .sort((a, b) => String(b.data).localeCompare(String(a.data)));
 
     if (listaEnriquecida.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; color:#64748b; padding:20px;">Nenhuma O.P. encontrada para os filtros informados</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; color:#64748b; padding:20px;">Nenhuma O.P. encontrada para os filtros informados</td></tr>`;
         return;
     }
 
@@ -475,6 +573,8 @@ function renderProgramacaoTable() {
             <td>${p.lote || '-'}</td>
             <td>${p.codigoProduto}</td>
             <td>${p.descricaoProduto || '-'}</td>
+            <td><b>${formatPtNumber(p.horasDisponiveis)}h</b></td>
+            <td style="color:#475569;">${p.horasEst > 0 ? formatPtNumber(p.horasEst) + 'h' : '-'}</td>
             <td><b>${p.qtdProgramada.toLocaleString('pt-BR')}</b></td>
             <td style="color:var(--primary-blue); font-weight:700;">${p.produzido.toLocaleString('pt-BR')}</td>
             <td style="color:${p.concluida ? 'var(--success)' : 'var(--danger)'}; font-weight:800;">${p.faltante.toLocaleString('pt-BR')}</td>
@@ -636,6 +736,7 @@ window.switchViewTab = (id) => {
         buildDashboardAnalyticsUI();
     } else if (id === 'prog') {
         renderProgramacaoTable();
+        atualizarEstimativaHorasCiclo();
     } else if (id === 'calc') {
         atualizarDatalistOpsProgramadas();
         atualizarPainelSaldoOP();
@@ -807,7 +908,7 @@ function sumAllDowntimes() {
 }
 
 // ==========================================
-// CÁLCULO DE OEE E META
+// CÁLCULO DE OEE NO APONTAMENTO (DISP × PERF × QUAL)
 // ==========================================
 function calculateEfficiencyPerformance() {
     const getVal = (id) => { const el = document.getElementById(id); return el && el.value ? el.value : ""; };
@@ -830,26 +931,37 @@ function calculateEfficiencyPerformance() {
     if (totalTurno < 0) totalTurno += 1440; 
 
     let totalParada = (pTime[0] * 60) + pTime[1];
-    let prodTimeMinutos = totalTurno - totalParada;
-    if (prodTimeMinutos < 0) prodTimeMinutos = 0;
+    let prodTimeMinutos = Math.max(0, totalTurno - totalParada);
 
     const ciclo = getNum('form-ciclo');
     const maxCav = getNum('form-cav');
-    const real = getNum('form-real');
+    const boas = getNum('form-real');
+    const refugoProc = getNum('form-refugo');
+    const refugoSetup = getNum('form-refugo-setup');
+    const totalRefugo = refugoProc + refugoSetup;
+    const totalProduzido = boas + totalRefugo;
 
-    let meta = 0;
+    // 1. Disponibilidade do Turno
+    const disp = totalTurno > 0 ? (prodTimeMinutos / totalTurno) : 0;
+
+    // 2. Performance (Total Produzido / Teórico no tempo produtivo)
+    let teorico = 0;
     if (ciclo > 0 && maxCav > 0) {
-        const pecasPorHora = Math.floor((3600 / ciclo) * maxCav);
-        const horasTrabalhadas = prodTimeMinutos / 60;
-        meta = Math.floor(pecasPorHora * horasTrabalhadas);
+        const pecasPorHora = (3600 / ciclo) * maxCav;
+        teorico = Math.floor(pecasPorHora * (prodTimeMinutos / 60));
     }
+    const perf = teorico > 0 ? (totalProduzido / teorico) : 0;
 
-    let oee = meta > 0 ? Math.round((real / meta) * 100) : 0;
+    // 3. Qualidade (Peças Boas / Total Produzido)
+    const qual = totalProduzido > 0 ? (boas / totalProduzido) : 0;
+
+    // OEE = Disponibilidade x Performance x Qualidade
+    const oee = Math.round(disp * perf * qual * 100);
     
     const oeePctEl = document.getElementById('oee-pct');
     const oeeTargetEl = document.getElementById('oee-target');
     if (oeePctEl) oeePctEl.innerText = `${oee}%`;
-    if (oeeTargetEl) oeeTargetEl.innerText = `meta=${meta}`;
+    if (oeeTargetEl) oeeTargetEl.innerText = `meta=${teorico} | Disp ${(disp*100).toFixed(0)}% · Perf ${(perf*100).toFixed(0)}% · Qual ${(qual*100).toFixed(0)}%`;
 
     const display = document.querySelector('.oee-box-display');
     if (display) {
@@ -859,7 +971,7 @@ function calculateEfficiencyPerformance() {
     }
 }
 
-['form-ini', 'form-fim', 'form-ciclo', 'form-cav', 'form-real', 'form-refugo'].forEach(id => {
+['form-ini', 'form-fim', 'form-ciclo', 'form-cav', 'form-real', 'form-refugo', 'form-refugo-setup'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
         el.addEventListener('input', () => {
@@ -1193,8 +1305,48 @@ function setTodayOnDateField() {
 }
 
 // ==========================================
-// CONSTRUÇÃO DO DASHBOARD OEE E GRÁFICOS
+// CONSTRUÇÃO DO DASHBOARD OEE (DISP × PERF × QUAL)
 // ==========================================
+function filtrarItemPorPeriodoDash(dataItem) {
+    if (dashPeriodoAtual === 'ontem') {
+        const dataOntem = new Date();
+        dataOntem.setDate(dataOntem.getDate() - 1);
+        const tzOffset = dataOntem.getTimezoneOffset() * 60000;
+        const dataOntemStr = new Date(dataOntem.getTime() - tzOffset).toISOString().slice(0, 10);
+        return dataItem === dataOntemStr;
+    } 
+    else if (dashPeriodoAtual === 'mes_especifico') {
+        const selectMes = document.getElementById('dash-select-mes');
+        if (selectMes && selectMes.value) {
+            const mesSel = parseInt(selectMes.value, 10);
+            if (!dataItem) return false;
+            const partes = String(dataItem).split('-');
+            const mesItem = parseInt(partes[1], 10);
+            return mesItem === mesSel;
+        }
+    } 
+    else if (dashPeriodoAtual === 'especifica') {
+        const selectDataEspecifica = document.getElementById('dash-select-data-lancada');
+        if (selectDataEspecifica && selectDataEspecifica.value) {
+            return dataItem === selectDataEspecifica.value;
+        }
+    }
+    return true;
+}
+
+function aplicarCorCardOEE(cardId, valId, pct) {
+    const card = document.getElementById(cardId);
+    const valEl = document.getElementById(valId);
+    if (!card || !valEl) return;
+
+    let color = "#16a34a"; // Verde (>= 85%)
+    if (pct < 60) color = "#ef4444"; // Vermelho (< 60%)
+    else if (pct < 85) color = "#f59e0b"; // Laranja (60% - 84.9%)
+
+    card.style.borderLeftColor = color;
+    valEl.style.color = color;
+}
+
 function buildDashboardAnalyticsUI() {
     if (!authenticatedUserRef) return;
 
@@ -1208,32 +1360,10 @@ function buildDashboardAnalyticsUI() {
     const dashMaqSelect = document.getElementById('dash-select-maquina');
     const maqSelecionadaDash = dashMaqSelect ? cleanMachineCode(dashMaqSelect.value) : "";
 
+    // 1. Filtra apontamentos de produção
     let dadosFiltrados = cacheDataRecords.filter(i => {
         if (!activeUserRoleAdmin && i.criadoPor !== authenticatedUserRef.email) return false;
-
-        if (dashPeriodoAtual === 'ontem') {
-            const dataOntem = new Date();
-            dataOntem.setDate(dataOntem.getDate() - 1);
-            const tzOffset = dataOntem.getTimezoneOffset() * 60000;
-            const dataOntemStr = new Date(dataOntem.getTime() - tzOffset).toISOString().slice(0, 10);
-            if (i.data !== dataOntemStr) return false;
-        } 
-        else if (dashPeriodoAtual === 'mes_especifico') {
-            const selectMes = document.getElementById('dash-select-mes');
-            if (selectMes && selectMes.value) {
-                const mesSel = parseInt(selectMes.value, 10);
-                if (!i.data) return false;
-                const partes = String(i.data).split('-');
-                const mesItem = parseInt(partes[1], 10);
-                if (mesItem !== mesSel) return false;
-            }
-        } 
-        else if (dashPeriodoAtual === 'especifica') {
-            const selectDataEspecifica = document.getElementById('dash-select-data-lancada');
-            if (selectDataEspecifica && selectDataEspecifica.value) {
-                if (i.data !== selectDataEspecifica.value) return false;
-            }
-        }
+        if (!filtrarItemPorPeriodoDash(i.data)) return false;
 
         if (fLaunchDate) { if (i.data !== fLaunchDate) return false; } 
         else {
@@ -1246,8 +1376,23 @@ function buildDashboardAnalyticsUI() {
         return true;
     });
 
+    // 2. Filtra programação correspondente para obter Horas Disponíveis Programadas
+    let progFiltrada = cacheProgramacaoList.filter(p => {
+        if (!filtrarItemPorPeriodoDash(p.data)) return false;
+        if (fLaunchDate) { if (p.data !== fLaunchDate) return false; }
+        else {
+            if (fStart && p.data < fStart) return false;
+            if (fEnd && p.data > fEnd) return false;
+        }
+        if (fMaqGeral && !cleanMachineCode(p.maquina).includes(fMaqGeral)) return false;
+        if (fProd && !String(p.codigoProduto).toLowerCase().includes(fProd)) return false;
+        if (maqSelecionadaDash && cleanMachineCode(p.maquina) !== maqSelecionadaDash) return false;
+        return true;
+    });
+
     atualizarSelectDatasLancadasDash(cacheDataRecords);
 
+    // Gráfico Produção por Injetora (INJ-01 a INJ-13)
     let prodPorInjetora = Array(LISTA_INJETORAS.length).fill(0);
     dadosFiltrados.forEach(i => {
         let cleanCode = cleanMachineCode(i.maquina);
@@ -1270,9 +1415,10 @@ function buildDashboardAnalyticsUI() {
         });
     }
 
-    let dadosParaParadasEOperador = dadosFiltrados;
+    // Escopo OEE (todas as máquinas ou máquina selecionada no filtro)
+    let escopoOEE = dadosFiltrados;
     if (maqSelecionadaDash) {
-        dadosParaParadasEOperador = dadosFiltrados.filter(i => cleanMachineCode(i.maquina) === maqSelecionadaDash);
+        escopoOEE = dadosFiltrados.filter(i => cleanMachineCode(i.maquina) === maqSelecionadaDash);
     }
 
     const lblPareto = document.getElementById('lbl-pareto-titulo');
@@ -1284,32 +1430,41 @@ function buildDashboardAnalyticsUI() {
 
     let totalMinutosParados = 0;
     let totalMinutosTurnoBruto = 0;
-    let somaOEE = 0;
-    let contRegistrosOEE = 0;
+    let totalPecasBoas = 0;
+    let totalRefugo = 0;
+    let totalPecasTeoricas = 0;
     let mapaParadas = {};
 
-    dadosFiltrados.forEach(i => {
+    escopoOEE.forEach(i => {
+        let minParadoItem = 0;
         if (i.totalParado) {
             const parts = String(i.totalParado).split(':').map(Number);
-            totalMinutosParados += (parts[0] * 60) + (parts[1] || 0);
+            minParadoItem = (parts[0] * 60) + (parts[1] || 0);
+            totalMinutosParados += minParadoItem;
         }
+
+        let minBrutoItem = 0;
         if (i.inicioTurno && i.fimTurno) {
             const stringsIni = String(i.inicioTurno).split(':').map(Number);
             const stringsFim = String(i.fimTurno).split(':').map(Number);
             let dMin = (stringsFim[0] * 60 + stringsFim[1]) - (stringsIni[0] * 60 + stringsIni[1]);
             if (dMin < 0) dMin += 1440;
+            minBrutoItem = dMin;
             totalMinutosTurnoBruto += dMin;
         }
-        if (i.efetividade) {
-            let valorNum = parseFloat(String(i.efetividade).replace('%', ''));
-            if (!isNaN(valorNum)) { somaOEE += valorNum; contRegistrosOEE++; }
+
+        const minProdItem = Math.max(0, minBrutoItem - minParadoItem);
+        const cicloItem = parseFloat(String(i.ciclo || 0).replace(",", ".")) || 0;
+        const cavItem = parseFloat(String(i.cavidades || 0).replace(",", ".")) || 0;
+
+        if (cicloItem > 0 && cavItem > 0 && minProdItem > 0) {
+            const pecasPorHora = (3600 / cicloItem) * cavItem;
+            totalPecasTeoricas += Math.floor(pecasPorHora * (minProdItem / 60));
         }
-    });
 
-    let totalMinutosProdutivos = Math.max(0, totalMinutosTurnoBruto - totalMinutosParados);
-    let totalHorasTrabalhadas = totalMinutosProdutivos / 60;
+        totalPecasBoas += (Number(i.qtdReal) || 0);
+        totalRefugo += (Number(i.qtdRefugo) || 0) + (Number(i.qtdRefugoSetup) || 0);
 
-    dadosParaParadasEOperador.forEach(i => {
         if (Array.isArray(i.paradasMapeadas)) {
             i.paradasMapeadas.forEach(p => {
                 let mMin = p.totMin !== undefined ? (parseInt(p.totMin) || 0) : (parseInt(String(p.tot).replace(' min', '')) || 0);
@@ -1322,6 +1477,51 @@ function buildDashboardAnalyticsUI() {
         }
     });
 
+    const totalMinutosProdutivos = Math.max(0, totalMinutosTurnoBruto - totalMinutosParados);
+    const horasProdutivas = totalMinutosProdutivos / 60;
+    const horasTurnoBruto = totalMinutosTurnoBruto / 60;
+
+    // Soma das Horas Disponíveis programadas
+    const horasDisponiveisProgramadas = progFiltrada.reduce((acc, p) => acc + (Number(p.horasDisponiveis) || 0), 0);
+    // Base oficial de horas disponíveis (usa a programação se existir; senão usa o tempo bruto apontado)
+    const baseHorasDisponiveis = horasDisponiveisProgramadas > 0 ? horasDisponiveisProgramadas : horasTurnoBruto;
+
+    // ========================================================
+    // CÁLCULO OFICIAL OEE: DISPONIBILIDADE × PERFORMANCE × QUALIDADE
+    // ========================================================
+    const dispFator = baseHorasDisponiveis > 0 ? Math.min(1, horasProdutivas / baseHorasDisponiveis) : 0;
+    const totalPecasProduzidas = totalPecasBoas + totalRefugo;
+    const perfFator = totalPecasTeoricas > 0 ? (totalPecasProduzidas / totalPecasTeoricas) : 0;
+    const qualFator = totalPecasProduzidas > 0 ? (totalPecasBoas / totalPecasProduzidas) : 0;
+
+    const dispPct = Number((dispFator * 100).toFixed(1));
+    const perfPct = Number((perfFator * 100).toFixed(1));
+    const qualPct = Number((qualFator * 100).toFixed(1));
+    const oeePct = Number((dispFator * perfFator * qualFator * 100).toFixed(1));
+
+    // Atualiza Cards Estilo ooe.jpg
+    document.getElementById('oee-val-disp').innerText = `${formatPtNumber(dispPct)}%`;
+    document.getElementById('oee-sub-disp').innerText = `${formatPtNumber(baseHorasDisponiveis)}h de base · regra oficial da aba OEE`;
+    aplicarCorCardOEE('card-oee-disp', 'oee-val-disp', dispPct);
+
+    document.getElementById('oee-val-perf').innerText = `${formatPtNumber(perfPct)}%`;
+    document.getElementById('oee-sub-perf').innerText = `${totalPecasProduzidas.toLocaleString('pt-BR')} produzidas / ${totalPecasTeoricas.toLocaleString('pt-BR')} teóricas`;
+    aplicarCorCardOEE('card-oee-perf', 'oee-val-perf', perfPct);
+
+    document.getElementById('oee-val-qual').innerText = `${formatPtNumber(qualPct)}%`;
+    document.getElementById('oee-sub-qual').innerText = `${totalPecasBoas.toLocaleString('pt-BR')} boas / ${totalPecasProduzidas.toLocaleString('pt-BR')} produzidas · ${totalRefugo.toLocaleString('pt-BR')} refugos`;
+    aplicarCorCardOEE('card-oee-qual', 'oee-val-qual', qualPct);
+
+    let conceitoOEE = "Crítico";
+    if (oeePct >= 85) conceitoOEE = "Excelente";
+    else if (oeePct >= 65) conceitoOEE = "Bom";
+    else if (oeePct >= 50) conceitoOEE = "Regular";
+
+    document.getElementById('oee-val-geral').innerText = `${formatPtNumber(oeePct)}%`;
+    document.getElementById('oee-sub-geral').innerText = `${conceitoOEE} · Calculado para o filtro atual`;
+    aplicarCorCardOEE('card-oee-geral', 'oee-val-geral', oeePct);
+
+    // Atualiza KPIs de Horas
     const hParadas = Math.floor(totalMinutosParados / 60);
     const mParadas = totalMinutosParados % 60;
     if (document.getElementById('dash-card-parado')) {
@@ -1333,14 +1533,17 @@ function buildDashboardAnalyticsUI() {
     if (document.getElementById('dash-card-utilizado')) {
         document.getElementById('dash-card-utilizado').innerText = `${hProd}h ${mProd}m`;
     }
-    
-    let oeeGlobalFinal = contRegistrosOEE > 0 ? Math.round(somaOEE / contRegistrosOEE) : 0;
-    if (document.getElementById('dash-card-oee')) document.getElementById('dash-card-oee').innerText = `${oeeGlobalFinal}%`;
 
-    let horasDisponiveisMes = 7248;
-    let pctAproveitamento = horasDisponiveisMes > 0 ? Math.round((totalHorasTrabalhadas / horasDisponiveisMes) * 100) : 0;
-    if (document.getElementById('dash-txt-aproveitamento')) document.getElementById('dash-txt-aproveitamento').innerText = `${pctAproveitamento}%`;
+    if (document.getElementById('dash-card-disp-prog')) {
+        document.getElementById('dash-card-disp-prog').innerText = `${formatPtNumber(baseHorasDisponiveis)}h`;
+    }
 
+    const pctAproveitamento = baseHorasDisponiveis > 0 ? Math.round((horasProdutivas / baseHorasDisponiveis) * 100) : 0;
+    if (document.getElementById('dash-txt-aproveitamento')) {
+        document.getElementById('dash-txt-aproveitamento').innerText = `${pctAproveitamento}%`;
+    }
+
+    // Gráficos
     if (instChartBalanço) instChartBalanço.destroy();
     if (instChartIndices) instChartIndices.destroy();
     if (instChartPareto) instChartPareto.destroy();
@@ -1350,29 +1553,30 @@ function buildDashboardAnalyticsUI() {
         instChartBalanço = new Chart(ctxBalançoEl.getContext('2d'), {
             type: 'bar',
             data: {
-                labels: ['Horas do Mês'],
+                labels: ['Horas do Período'],
                 datasets: [
-                    { label: 'Disponíveis (Meta)', data: [horasDisponiveisMes], backgroundColor: '#e2e8f0', barThickness: 24 },
-                    { label: 'Utilizadas (Apontadas)', data: [Math.round(totalHorasTrabalhadas)], backgroundColor: '#4f46e5', barThickness: 24 }
+                    { label: 'Disponíveis (Programadas)', data: [Number(baseHorasDisponiveis.toFixed(1))], backgroundColor: '#e2e8f0', barThickness: 26 },
+                    { label: 'Produtivas (Utilizadas)', data: [Number(horasProdutivas.toFixed(1))], backgroundColor: '#16a34a', barThickness: 26 }
                 ]
             },
-            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { x: { max: 8000 } } }
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { x: { beginAtZero: true } } }
         });
     }
-
-    let dispCalculada = oeeGlobalFinal > 0 ? Math.min(100, oeeGlobalFinal + 5) : 0;
-    let perfCalculada = oeeGlobalFinal > 0 ? Math.min(100, oeeGlobalFinal + 2) : 0;
-    let qualCalculada = oeeGlobalFinal > 0 ? 98 : 0;
 
     const ctxIndicesEl = document.getElementById('chartIndicesOEE');
     if (ctxIndicesEl) {
         instChartIndices = new Chart(ctxIndicesEl.getContext('2d'), {
             type: 'bar',
             data: {
-                labels: ['Disponibilidade', 'Performance', 'Qualidade', 'OEE Global'],
-                datasets: [{ label: 'Percentual (%)', data: [dispCalculada, perfCalculada, qualCalculada, oeeGlobalFinal], backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#6366f1'] }]
+                labels: ['Disponibilidade', 'Performance', 'Qualidade', 'OEE Geral'],
+                datasets: [{
+                    label: 'Percentual (%)',
+                    data: [dispPct, perfPct, qualPct, oeePct],
+                    backgroundColor: ['#3b82f6', '#f59e0b', '#10b981', '#16a34a'],
+                    borderRadius: 6
+                }]
             },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { max: 100, beginAtZero: true } } }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { max: 110, beginAtZero: true } } }
         });
     }
 
@@ -1390,6 +1594,7 @@ function buildDashboardAnalyticsUI() {
         });
     }
 
+    // Detalhamento Operadores/Paradas
     const boxOperadores = document.getElementById('dash-info-operadores');
     if (boxOperadores) {
         if (!maqSelecionadaDash) {
@@ -1400,7 +1605,7 @@ function buildDashboardAnalyticsUI() {
             `;
         } else {
             let listaDetalhadaHTML = [];
-            dadosParaParadasEOperador.forEach(rec => {
+            escopoOEE.forEach(rec => {
                 let opNome = rec.nomeOperador || rec.criadoPor || "Operador Não Identificado";
                 if (Array.isArray(rec.paradasMapeadas) && rec.paradasMapeadas.length > 0) {
                     rec.paradasMapeadas.forEach(p => {
@@ -1464,9 +1669,18 @@ window.addEventListener('DOMContentLoaded', () => {
 
     const inputProgCod = document.getElementById('prog-cod');
     if (inputProgCod) {
+        inputProgCod.addEventListener('input', (e) => buscarEPreencherProduto(e.target.value, "programacao"));
         inputProgCod.addEventListener('change', (e) => buscarEPreencherProduto(e.target.value, "programacao"));
         inputProgCod.addEventListener('blur', (e) => buscarEPreencherProduto(e.target.value, "programacao"));
     }
+
+    ['prog-qtd', 'prog-horas-disp'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', atualizarEstimativaHorasCiclo);
+            el.addEventListener('change', atualizarEstimativaHorasCiclo);
+        }
+    });
 
     const inputOp = document.getElementById('form-op');
     if (inputOp) {
@@ -1482,8 +1696,8 @@ window.addEventListener('DOMContentLoaded', () => {
     // Listeners dos filtros por coluna da tabela de Programação
     [
         'f-prog-data', 'f-prog-inj', 'f-prog-op', 'f-prog-lote',
-        'f-prog-cod', 'f-prog-desc', 'f-prog-qtd', 'f-prog-prod',
-        'f-prog-falt', 'f-prog-status'
+        'f-prog-cod', 'f-prog-desc', 'f-prog-hdisp', 'f-prog-hest',
+        'f-prog-qtd', 'f-prog-prod', 'f-prog-falt', 'f-prog-status'
     ].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
