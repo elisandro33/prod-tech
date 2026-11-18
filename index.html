@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PROD-TECH | Controle de Produção e OEE</title>
-    <link rel="stylesheet" href="./style.css?v=7">
+    <link rel="stylesheet" href="./style.css?v=8">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -185,7 +185,7 @@
                 </div>
             </section>
 
-            <!-- NOVA ABA: PROGRAMAR PRODUÇÃO / O.P. -->
+            <!-- ABA PROGRAMAR PRODUÇÃO / O.P. -->
             <section id="prog" class="view-content">
                 <h2 class="dashboard-title">Programação de Ordem de Produção (O.P.)</h2>
 
@@ -250,7 +250,7 @@
                     <button id="btn-cancel-prog" class="btn-submit-system" style="display:none; background:#64748b; margin-top:10px;">CANCELAR EDIÇÃO</button>
                 </div>
 
-                <!-- Tabela de Ordens Programadas e Saldo Faltante -->
+                <!-- Tabela de Ordens Programadas com Filtros por Coluna -->
                 <div class="ui-card">
                     <div class="section-title-blue">Ordens Programadas & Acompanhamento de Saldo</div>
                     <div class="table-scroll-holder">
@@ -268,6 +268,44 @@
                                     <th>Faltante</th>
                                     <th>Status</th>
                                     <th>Ações</th>
+                                </tr>
+                                <tr class="filter-row">
+                                    <th><input type="text" id="f-prog-data" class="col-filter-input" placeholder="dd/mm/aaaa"></th>
+                                    <th>
+                                        <select id="f-prog-inj" class="col-filter-input">
+                                            <option value="">Todas</option>
+                                            <option value="01">INJ-01</option>
+                                            <option value="02">INJ-02</option>
+                                            <option value="03">INJ-03</option>
+                                            <option value="04">INJ-04</option>
+                                            <option value="05">INJ-05</option>
+                                            <option value="06">INJ-06</option>
+                                            <option value="07">INJ-07</option>
+                                            <option value="08">INJ-08</option>
+                                            <option value="09">INJ-09</option>
+                                            <option value="10">INJ-10</option>
+                                            <option value="11">INJ-11</option>
+                                            <option value="12">INJ-12</option>
+                                            <option value="13">INJ-13</option>
+                                        </select>
+                                    </th>
+                                    <th><input type="text" id="f-prog-op" class="col-filter-input" placeholder="Filtrar O.P."></th>
+                                    <th><input type="text" id="f-prog-lote" class="col-filter-input" placeholder="Filtrar Lote"></th>
+                                    <th><input type="text" id="f-prog-cod" class="col-filter-input" placeholder="Filtrar Cód."></th>
+                                    <th><input type="text" id="f-prog-desc" class="col-filter-input" placeholder="Filtrar Descrição"></th>
+                                    <th><input type="text" id="f-prog-qtd" class="col-filter-input" placeholder="Qtde"></th>
+                                    <th><input type="text" id="f-prog-prod" class="col-filter-input" placeholder="Prod."></th>
+                                    <th><input type="text" id="f-prog-falt" class="col-filter-input" placeholder="Falt."></th>
+                                    <th>
+                                        <select id="f-prog-status" class="col-filter-input">
+                                            <option value="">Todos</option>
+                                            <option value="EM ABERTO">Em Aberto</option>
+                                            <option value="CONCLUÍDA">Concluída</option>
+                                        </select>
+                                    </th>
+                                    <th>
+                                        <button type="button" onclick="limparFiltrosProgramacao()" class="btn-clear-col-filters">Limpar</button>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody id="table-programacao-body"></tbody>
@@ -568,6 +606,6 @@
     </div>
 
     <!-- SCRIPT PRINCIPAL -->
-    <script src="./app.js?v=7"></script>
+    <script src="./app.js?v=8"></script>
 </body>
 </html>
