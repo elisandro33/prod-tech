@@ -203,7 +203,7 @@ function buscarEPreencherProduto(codigoInput, destino = "apontamento") {
 }
 
 // ==========================================
-// PROGRAMAÇÃO DE O.P. E CÁLCULO DE SALDO
+// PROGRAMAÇÃO DE O.P., CÁLCULO DE SALDO E FILTROS
 // ==========================================
 function calcularProducaoAcumuladaOP(nrOp, excluirIdLancamento = "") {
     if (!nrOp) return 0;
@@ -393,35 +393,92 @@ function loadProgramacaoToEdit(p) {
     document.getElementById('btn-save-programacao').innerText = "ALTERAR PROGRAMAÇÃO";
 }
 
+window.limparFiltrosProgramacao = function() {
+    const ids = [
+        'f-prog-data', 'f-prog-inj', 'f-prog-op', 'f-prog-lote',
+        'f-prog-cod', 'f-prog-desc', 'f-prog-qtd', 'f-prog-prod',
+        'f-prog-falt', 'f-prog-status'
+    ];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+    });
+    renderProgramacaoTable();
+};
+
 function renderProgramacaoTable() {
     const tbody = document.getElementById('table-programacao-body');
     if (!tbody) return;
     tbody.innerHTML = "";
 
-    if (cacheProgramacaoList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; color:#64748b; padding:20px;">Nenhuma O.P. programada</td></tr>`;
+    const getF = (id) => {
+        const el = document.getElementById(id);
+        return el ? el.value.trim().toLowerCase() : "";
+    };
+
+    const fData = getF('f-prog-data');
+    const fInj = getF('f-prog-inj');
+    const fOp = getF('f-prog-op');
+    const fLote = getF('f-prog-lote');
+    const fCod = getF('f-prog-cod');
+    const fDesc = getF('f-prog-desc');
+    const fQtd = getF('f-prog-qtd');
+    const fProd = getF('f-prog-prod');
+    const fFalt = getF('f-prog-falt');
+    const fStatus = getF('f-prog-status');
+
+    const listaEnriquecida = cacheProgramacaoList
+        .map(p => {
+            const produzido = calcularProducaoAcumuladaOP(p.nrOp);
+            const faltante = Math.max(0, p.qtdProgramada - produzido);
+            const concluida = faltante === 0;
+            const statusText = concluida ? 'CONCLUÍDA' : 'EM ABERTO';
+            const dataFormatada = String(p.data).split('-').reverse().join('/');
+            const injCode = cleanMachineCode(p.maquina);
+
+            return {
+                ...p,
+                produzido,
+                faltante,
+                concluida,
+                statusText,
+                dataFormatada,
+                injCode
+            };
+        })
+        .filter(item => {
+            if (fData && !item.dataFormatada.toLowerCase().includes(fData) && !String(item.data).includes(fData)) return false;
+            if (fInj && item.injCode !== cleanMachineCode(fInj)) return false;
+            if (fOp && !String(item.nrOp).toLowerCase().includes(fOp)) return false;
+            if (fLote && !String(item.lote || '').toLowerCase().includes(fLote)) return false;
+            if (fCod && !String(item.codigoProduto).toLowerCase().includes(fCod)) return false;
+            if (fDesc && !String(item.descricaoProduto || '').toLowerCase().includes(fDesc)) return false;
+            if (fQtd && !String(item.qtdProgramada).includes(fQtd) && !item.qtdProgramada.toLocaleString('pt-BR').includes(fQtd)) return false;
+            if (fProd && !String(item.produzido).includes(fProd) && !item.produzido.toLocaleString('pt-BR').includes(fProd)) return false;
+            if (fFalt && !String(item.faltante).includes(fFalt) && !item.faltante.toLocaleString('pt-BR').includes(fFalt)) return false;
+            if (fStatus && item.statusText.toLowerCase() !== fStatus) return false;
+            return true;
+        })
+        .sort((a, b) => String(b.data).localeCompare(String(a.data)));
+
+    if (listaEnriquecida.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; color:#64748b; padding:20px;">Nenhuma O.P. encontrada para os filtros informados</td></tr>`;
         return;
     }
 
-    const listaOrdenada = [...cacheProgramacaoList].sort((a, b) => String(b.data).localeCompare(String(a.data)));
-
-    listaOrdenada.forEach(p => {
-        const produzido = calcularProducaoAcumuladaOP(p.nrOp);
-        const faltante = Math.max(0, p.qtdProgramada - produzido);
-        const concluida = faltante === 0;
-
+    listaEnriquecida.forEach(p => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td><b>${String(p.data).split('-').reverse().join('/')}</b></td>
-            <td><b>INJ-${cleanMachineCode(p.maquina)}</b></td>
+            <td><b>${p.dataFormatada}</b></td>
+            <td><b>INJ-${p.injCode}</b></td>
             <td><b>${p.nrOp}</b></td>
             <td>${p.lote || '-'}</td>
             <td>${p.codigoProduto}</td>
             <td>${p.descricaoProduto || '-'}</td>
             <td><b>${p.qtdProgramada.toLocaleString('pt-BR')}</b></td>
-            <td style="color:var(--primary-blue); font-weight:700;">${produzido.toLocaleString('pt-BR')}</td>
-            <td style="color:${concluida ? 'var(--success)' : 'var(--danger)'}; font-weight:800;">${faltante.toLocaleString('pt-BR')}</td>
-            <td><span class="${concluida ? 'op-badge-done' : 'op-badge-open'}">${concluida ? 'CONCLUÍDA' : 'EM ABERTO'}</span></td>
+            <td style="color:var(--primary-blue); font-weight:700;">${p.produzido.toLocaleString('pt-BR')}</td>
+            <td style="color:${p.concluida ? 'var(--success)' : 'var(--danger)'}; font-weight:800;">${p.faltante.toLocaleString('pt-BR')}</td>
+            <td><span class="${p.concluida ? 'op-badge-done' : 'op-badge-open'}">${p.statusText}</span></td>
             <td style="display:flex; gap:6px;">
                 <button class="btn-submit-system" style="padding:5px 8px; font-size:0.72rem;" id="edt-prog-${p.id}">EDITAR</button>
                 <button style="background:var(--danger); border:none; color:white; padding:5px 8px; border-radius:6px; font-weight:bold; cursor:pointer;" id="del-prog-${p.id}">X</button>
@@ -1421,6 +1478,19 @@ window.addEventListener('DOMContentLoaded', () => {
     if (selectMaqForm) {
         selectMaqForm.addEventListener('change', atualizarDatalistOpsProgramadas);
     }
+
+    // Listeners dos filtros por coluna da tabela de Programação
+    [
+        'f-prog-data', 'f-prog-inj', 'f-prog-op', 'f-prog-lote',
+        'f-prog-cod', 'f-prog-desc', 'f-prog-qtd', 'f-prog-prod',
+        'f-prog-falt', 'f-prog-status'
+    ].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', renderProgramacaoTable);
+            el.addEventListener('change', renderProgramacaoTable);
+        }
+    });
 
     const selectMes = document.getElementById('dash-select-mes');
     if (selectMes) {
