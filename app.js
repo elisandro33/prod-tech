@@ -3,7 +3,6 @@
 // ========================================================
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxKmHvNqLji-71kJcOZdlGs31yWwbD3PlIrtP5GTcFgp4SkNbjYfFxAPPjkZ6ZhfVw8yw/exec";
 
-// Tratamento global de erros
 window.onerror = function(msg, url, line) { 
     console.error("ERRO CRÍTICO: " + msg + "\nLinha: " + line); 
     return false; 
@@ -24,7 +23,6 @@ function cleanMachineCode(input) {
     return pad2(digitsOnly);
 }
 
-// HELPER: Limpa horários vindos do Google Sheets (ex: "1899-12-30T09:36:28.000Z" -> "09:36")
 function formatSheetTime(val) {
     if (!val) return "00:00";
     const str = String(val).trim();
@@ -41,7 +39,6 @@ function formatSheetTime(val) {
     return "00:00";
 }
 
-// HELPER: Limpa datas vindas do Google Sheets (ex: ISO ou DD/MM/YYYY -> "YYYY-MM-DD")
 function formatSheetDate(val) {
     if (!val) return "";
     const str = String(val).trim();
@@ -53,7 +50,6 @@ function formatSheetDate(val) {
     return str;
 }
 
-// HELPER: Limpa OEE vindo do Google Sheets (ex: "0.85" ou 0.85 -> "85%")
 function formatSheetOEE(val) {
     if (val === null || val === undefined || val === "") return "0%";
     const str = String(val).trim();
@@ -65,22 +61,20 @@ function formatSheetOEE(val) {
     return "0%";
 }
 
-// Variáveis Globais dos Gráficos (Chart.js)
 let instChartBalanço = null;
 let instChartIndices = null;
 let instChartPareto = null;
 let instChartMaquinas = null;
 let dashPeriodoAtual = 'mes_especifico';
 
-// Variáveis de Estado (Google Sheets)
 let activeUserRoleAdmin = false;
 let authenticatedUserRef = null;
 let cacheDataRecords = [];
 let cacheProdutosList = [];
+let cacheProgramacaoList = [];
 let cacheUsuariosList = [];
 let listaParadasLancadas = [];
 
-// Motivos Padrão de Parada
 const MOTIVOS_PARADAS_DATA = [
     { cod: "01", desc: "Set Up - Início de Produção" },
     { cod: "02", desc: "Set Up - Manutenção de Ferramental/Molde" },
@@ -105,7 +99,7 @@ const MOTIVOS_PARADAS_DATA = [
     { cod: "21", desc: "Outros" }
 ];
 
-const LISTA_INJETORAS = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
+const LISTA_INJETORAS = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13"];
 
 // ==========================================
 // COMUNICAÇÃO COM GOOGLE SHEETS (APPS SCRIPT)
@@ -129,10 +123,27 @@ function normalizarRegistrosProducao(lista) {
     return (lista || []).map(item => ({
         ...item,
         data: formatSheetDate(item.data),
+        produto: String(item.produto || "").trim(),
+        descricaoProduto: String(item.descricaoProduto || "").trim(),
+        nrOp: String(item.nrOp || "").trim(),
+        lote: String(item.lote || "").trim(),
         inicioTurno: formatSheetTime(item.inicioTurno),
         fimTurno: formatSheetTime(item.fimTurno),
         totalParado: formatSheetTime(item.totalParado),
         efetividade: formatSheetOEE(item.efetividade)
+    }));
+}
+
+function normalizarProgramacao(lista) {
+    return (lista || []).map(item => ({
+        ...item,
+        data: formatSheetDate(item.data),
+        maquina: cleanMachineCode(item.maquina),
+        nrOp: String(item.nrOp || "").trim(),
+        lote: String(item.lote || "").trim(),
+        codigoProduto: String(item.codigoProduto || "").trim().toUpperCase(),
+        descricaoProduto: String(item.descricaoProduto || "").trim(),
+        qtdProgramada: Number(item.qtdProgramada) || 0
     }));
 }
 
@@ -142,12 +153,16 @@ async function sincronizarDadosGoogleSheets(mostrarAlerta = false) {
         if (res.status === "ok") {
             cacheDataRecords = normalizarRegistrosProducao(res.producao);
             cacheProdutosList = res.produtos || [];
+            cacheProgramacaoList = normalizarProgramacao(res.programacao);
             cacheUsuariosList = res.usuarios || [];
 
             cacheDataRecords.sort((a, b) => cleanMachineCode(a.maquina).localeCompare(cleanMachineCode(b.maquina), undefined, { numeric: true }));
 
             updateLaunchDateFilterOptions();
             applyFilterAndFillTable();
+            renderProgramacaoTable();
+            atualizarDatalistOpsProgramadas();
+            atualizarPainelSaldoOP();
             renderUsersTable();
 
             const dashTab = document.getElementById('dash');
@@ -162,21 +177,267 @@ async function sincronizarDadosGoogleSheets(mostrarAlerta = false) {
     }
 }
 
-// Auto-preenchimento a partir da aba "produtos"
-function buscarEPreencherProduto(codigoInput) {
+function buscarEPreencherProduto(codigoInput, destino = "apontamento") {
     if (!codigoInput) return;
     const idProduto = codigoInput.trim().toUpperCase();
 
     const produto = cacheProdutosList.find(p => String(p.codigo).trim().toUpperCase() === idProduto);
     if (produto) {
-        const elCavidades = document.getElementById('form-cav');
-        const elCiclo = document.getElementById('form-ciclo');
+        if (destino === "apontamento") {
+            const elCavidades = document.getElementById('form-cav');
+            const elCiclo = document.getElementById('form-ciclo');
+            const elDesc = document.getElementById('form-prod-desc');
 
-        if (elCavidades && produto.cavidades !== undefined) elCavidades.value = produto.cavidades;
-        if (elCiclo && produto.ciclo !== undefined) elCiclo.value = produto.ciclo;
+            if (elCavidades && produto.cavidades !== undefined) elCavidades.value = produto.cavidades;
+            if (elCiclo && produto.ciclo !== undefined) elCiclo.value = produto.ciclo;
+            if (elDesc && produto.descricao && !elDesc.value) elDesc.value = produto.descricao;
 
-        calculateEfficiencyPerformance();
+            calculateEfficiencyPerformance();
+        } else if (destino === "programacao") {
+            const elProgDesc = document.getElementById('prog-desc');
+            if (elProgDesc && produto.descricao && !elProgDesc.value) {
+                elProgDesc.value = produto.descricao;
+            }
+        }
     }
+}
+
+// ==========================================
+// PROGRAMAÇÃO DE O.P. E CÁLCULO DE SALDO
+// ==========================================
+function calcularProducaoAcumuladaOP(nrOp, excluirIdLancamento = "") {
+    if (!nrOp) return 0;
+    const opNorm = String(nrOp).trim().toUpperCase();
+    return cacheDataRecords.reduce((acc, rec) => {
+        if (excluirIdLancamento && String(rec.id) === String(excluirIdLancamento)) return acc;
+        if (String(rec.nrOp || "").trim().toUpperCase() === opNorm) {
+            return acc + (Number(rec.qtdReal) || 0);
+        }
+        return acc;
+    }, 0);
+}
+
+function atualizarDatalistOpsProgramadas() {
+    const datalist = document.getElementById('datalist-ops-programadas');
+    if (!datalist) return;
+
+    const maqFiltro = document.getElementById('form-maq') ? cleanMachineCode(document.getElementById('form-maq').value) : "";
+    datalist.innerHTML = "";
+
+    cacheProgramacaoList.forEach(prog => {
+        const jaProd = calcularProducaoAcumuladaOP(prog.nrOp);
+        const faltante = Math.max(0, prog.qtdProgramada - jaProd);
+        if (!maqFiltro || prog.maquina === maqFiltro) {
+            const opt = document.createElement('option');
+            opt.value = prog.nrOp;
+            opt.label = `INJ-${prog.maquina} | ${prog.codigoProduto} - ${prog.descricaoProduto} (Faltam: ${faltante.toLocaleString('pt-BR')} pçs)`;
+            datalist.appendChild(opt);
+        }
+    });
+}
+
+function aoSelecionarOuDigitarOP() {
+    const opDigitada = document.getElementById('form-op').value.trim().toUpperCase();
+    if (!opDigitada) {
+        atualizarPainelSaldoOP();
+        return;
+    }
+
+    const prog = cacheProgramacaoList.find(p => p.nrOp.toUpperCase() === opDigitada);
+    if (prog) {
+        const elMaq = document.getElementById('form-maq');
+        const elProd = document.getElementById('form-prod');
+        const elDesc = document.getElementById('form-prod-desc');
+        const elLote = document.getElementById('form-lote');
+
+        if (elMaq && prog.maquina) elMaq.value = prog.maquina;
+        if (elProd && prog.codigoProduto) {
+            elProd.value = prog.codigoProduto;
+            buscarEPreencherProduto(prog.codigoProduto, "apontamento");
+        }
+        if (elDesc && prog.descricaoProduto) elDesc.value = prog.descricaoProduto;
+        if (elLote && prog.lote) elLote.value = prog.lote;
+    }
+
+    atualizarPainelSaldoOP();
+}
+
+function atualizarPainelSaldoOP() {
+    const painel = document.getElementById('painel-saldo-op');
+    if (!painel) return;
+
+    const opDigitada = document.getElementById('form-op') ? document.getElementById('form-op').value.trim().toUpperCase() : "";
+    if (!opDigitada) {
+        painel.style.display = "none";
+        return;
+    }
+
+    const prog = cacheProgramacaoList.find(p => p.nrOp.toUpperCase() === opDigitada);
+    if (!prog) {
+        painel.style.display = "none";
+        return;
+    }
+
+    const editId = document.getElementById('entry-edit-id') ? document.getElementById('entry-edit-id').value : "";
+    const jaProduzido = calcularProducaoAcumuladaOP(prog.nrOp, editId);
+    const qtdAtualTurno = Number(document.getElementById('form-real').value) || 0;
+    const totalComTurno = jaProduzido + qtdAtualTurno;
+    const faltante = Math.max(0, prog.qtdProgramada - totalComTurno);
+
+    painel.style.display = "block";
+    document.getElementById('op-banner-titulo').innerText = `📋 O.P. ${prog.nrOp} | Lote: ${prog.lote || '-'} | INJ-${prog.maquina}`;
+    document.getElementById('op-banner-subtitulo').innerText = `Produto: ${prog.codigoProduto} - ${prog.descricaoProduto}`;
+
+    document.getElementById('op-stat-prog').innerText = prog.qtdProgramada.toLocaleString('pt-BR');
+    document.getElementById('op-stat-ant').innerText = jaProduzido.toLocaleString('pt-BR');
+    document.getElementById('op-stat-atual').innerText = qtdAtualTurno.toLocaleString('pt-BR');
+
+    const elFaltante = document.getElementById('op-stat-faltante');
+    const elStatus = document.getElementById('op-banner-status');
+
+    elFaltante.innerText = faltante.toLocaleString('pt-BR');
+    if (faltante === 0) {
+        painel.classList.add('completed');
+        elFaltante.style.color = "var(--success)";
+        elStatus.className = "op-badge-done";
+        elStatus.innerText = "O.P. CONCLUÍDA";
+    } else {
+        painel.classList.remove('completed');
+        elFaltante.style.color = "var(--danger)";
+        elStatus.className = "op-badge-open";
+        elStatus.innerText = "EM ANDAMENTO";
+    }
+}
+
+const saveProgBtn = document.getElementById('btn-save-programacao');
+if (saveProgBtn) {
+    saveProgBtn.onclick = async () => {
+        if (!authenticatedUserRef) return;
+
+        const eid = document.getElementById('prog-edit-id').value;
+        const data = document.getElementById('prog-data').value;
+        const maquina = cleanMachineCode(document.getElementById('prog-maq').value);
+        const nrOp = document.getElementById('prog-op').value.trim();
+        const lote = document.getElementById('prog-lote').value.trim();
+        const codigoProduto = document.getElementById('prog-cod').value.trim().toUpperCase();
+        const descricaoProduto = document.getElementById('prog-desc').value.trim();
+        const qtdProgramada = Number(document.getElementById('prog-qtd').value) || 0;
+
+        if (!data || !maquina || !nrOp || !codigoProduto || qtdProgramada <= 0) {
+            alert("Preencha Data, Injetora, Nº O.P., Código do Produto e Qtde a Produzir!");
+            return;
+        }
+
+        saveProgBtn.disabled = true;
+        saveProgBtn.innerText = "SALVANDO PROGRAMAÇÃO...";
+
+        try {
+            const res = await apiSheets({
+                action: "saveProgramacao",
+                packet: {
+                    id: eid || "",
+                    data,
+                    maquina,
+                    nrOp,
+                    lote,
+                    codigoProduto,
+                    descricaoProduto,
+                    qtdProgramada,
+                    criadoPor: authenticatedUserRef.email
+                }
+            });
+
+            if (res.status === "ok") {
+                await sincronizarDadosGoogleSheets();
+                alert(eid ? "Programação atualizada com sucesso!" : "O.P. programada com sucesso!");
+                resetFormProgramacao();
+            } else {
+                alert("Erro ao salvar programação: " + (res.message || ""));
+            }
+        } catch (err) {
+            alert(err.message);
+        } finally {
+            saveProgBtn.disabled = false;
+            saveProgBtn.innerText = "SALVAR PROGRAMAÇÃO";
+        }
+    };
+}
+
+function resetFormProgramacao() {
+    document.getElementById('prog-edit-id').value = "";
+    document.getElementById('prog-maq').value = "";
+    document.getElementById('prog-op').value = "";
+    document.getElementById('prog-lote').value = "";
+    document.getElementById('prog-cod').value = "";
+    document.getElementById('prog-desc').value = "";
+    document.getElementById('prog-qtd').value = "";
+    document.getElementById('btn-cancel-prog').style.display = "none";
+    document.getElementById('btn-save-programacao').innerText = "SALVAR PROGRAMAÇÃO";
+    setTodayOnDateField();
+}
+
+const cancelProgBtn = document.getElementById('btn-cancel-prog');
+if (cancelProgBtn) cancelProgBtn.onclick = resetFormProgramacao;
+
+function loadProgramacaoToEdit(p) {
+    document.getElementById('prog-edit-id').value = p.id;
+    document.getElementById('prog-data').value = p.data;
+    document.getElementById('prog-maq').value = cleanMachineCode(p.maquina);
+    document.getElementById('prog-op').value = p.nrOp;
+    document.getElementById('prog-lote').value = p.lote || "";
+    document.getElementById('prog-cod').value = p.codigoProduto;
+    document.getElementById('prog-desc').value = p.descricaoProduto || "";
+    document.getElementById('prog-qtd').value = p.qtdProgramada;
+
+    document.getElementById('btn-cancel-prog').style.display = "block";
+    document.getElementById('btn-save-programacao').innerText = "ALTERAR PROGRAMAÇÃO";
+}
+
+function renderProgramacaoTable() {
+    const tbody = document.getElementById('table-programacao-body');
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    if (cacheProgramacaoList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; color:#64748b; padding:20px;">Nenhuma O.P. programada</td></tr>`;
+        return;
+    }
+
+    const listaOrdenada = [...cacheProgramacaoList].sort((a, b) => String(b.data).localeCompare(String(a.data)));
+
+    listaOrdenada.forEach(p => {
+        const produzido = calcularProducaoAcumuladaOP(p.nrOp);
+        const faltante = Math.max(0, p.qtdProgramada - produzido);
+        const concluida = faltante === 0;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><b>${String(p.data).split('-').reverse().join('/')}</b></td>
+            <td><b>INJ-${cleanMachineCode(p.maquina)}</b></td>
+            <td><b>${p.nrOp}</b></td>
+            <td>${p.lote || '-'}</td>
+            <td>${p.codigoProduto}</td>
+            <td>${p.descricaoProduto || '-'}</td>
+            <td><b>${p.qtdProgramada.toLocaleString('pt-BR')}</b></td>
+            <td style="color:var(--primary-blue); font-weight:700;">${produzido.toLocaleString('pt-BR')}</td>
+            <td style="color:${concluida ? 'var(--success)' : 'var(--danger)'}; font-weight:800;">${faltante.toLocaleString('pt-BR')}</td>
+            <td><span class="${concluida ? 'op-badge-done' : 'op-badge-open'}">${concluida ? 'CONCLUÍDA' : 'EM ABERTO'}</span></td>
+            <td style="display:flex; gap:6px;">
+                <button class="btn-submit-system" style="padding:5px 8px; font-size:0.72rem;" id="edt-prog-${p.id}">EDITAR</button>
+                <button style="background:var(--danger); border:none; color:white; padding:5px 8px; border-radius:6px; font-weight:bold; cursor:pointer;" id="del-prog-${p.id}">X</button>
+            </td>
+        `;
+
+        tr.querySelector(`#edt-prog-${p.id}`).onclick = () => loadProgramacaoToEdit(p);
+        tr.querySelector(`#del-prog-${p.id}`).onclick = async () => {
+            if (confirm(`Excluir a programação da O.P. ${p.nrOp}?`)) {
+                await apiSheets({ action: "deleteProgramacao", id: p.id });
+                await sincronizarDadosGoogleSheets();
+            }
+        };
+
+        tbody.appendChild(tr);
+    });
 }
 
 // ==========================================
@@ -189,6 +450,7 @@ async function verifyInitialSetupSystem() {
         if (res.status === "ok") {
             cacheDataRecords = normalizarRegistrosProducao(res.producao);
             cacheProdutosList = res.produtos || [];
+            cacheProgramacaoList = normalizarProgramacao(res.programacao);
             cacheUsuariosList = res.usuarios || [];
 
             if (cacheUsuariosList.length === 0) {
@@ -291,6 +553,8 @@ function aplicarSessaoLogada(user) {
 
     updateLaunchDateFilterOptions();
     applyFilterAndFillTable();
+    renderProgramacaoTable();
+    atualizarDatalistOpsProgramadas();
 }
 
 window.triggerSystemLogout = () => {
@@ -313,6 +577,11 @@ window.switchViewTab = (id) => {
 
     if (id === 'dash') {
         buildDashboardAnalyticsUI();
+    } else if (id === 'prog') {
+        renderProgramacaoTable();
+    } else if (id === 'calc') {
+        atualizarDatalistOpsProgramadas();
+        atualizarPainelSaldoOP();
     }
 };
 
@@ -535,7 +804,16 @@ function calculateEfficiencyPerformance() {
 
 ['form-ini', 'form-fim', 'form-ciclo', 'form-cav', 'form-real', 'form-refugo'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) { el.addEventListener('input', calculateEfficiencyPerformance); el.addEventListener('change', calculateEfficiencyPerformance); }
+    if (el) {
+        el.addEventListener('input', () => {
+            calculateEfficiencyPerformance();
+            if (id === 'form-real') atualizarPainelSaldoOP();
+        });
+        el.addEventListener('change', () => {
+            calculateEfficiencyPerformance();
+            if (id === 'form-real') atualizarPainelSaldoOP();
+        });
+    }
 });
 
 // ==========================================
@@ -563,7 +841,9 @@ if (saveProdBtn) {
             nomeOperador: document.getElementById('form-nome').value.trim(),
             maquina: maq, 
             produto: prod,
+            descricaoProduto: document.getElementById('form-prod-desc').value.trim(),
             nrOp: document.getElementById('form-op').value.trim(),
+            lote: document.getElementById('form-lote').value.trim(),
             qtdRefugo: Number(document.getElementById('form-refugo').value) || 0,
             qtdRefugoSetup: Number(document.getElementById('form-refugo-setup').value) || 0,
             inicioTurno: document.getElementById('form-ini').value,
@@ -604,7 +884,9 @@ function resetInputsFormLancamento() {
     if (document.getElementById('form-nome')) document.getElementById('form-nome').value = "";
     if (document.getElementById('form-maq')) document.getElementById('form-maq').value = "";
     if (document.getElementById('form-prod')) document.getElementById('form-prod').value = "";
+    if (document.getElementById('form-prod-desc')) document.getElementById('form-prod-desc').value = "";
     if (document.getElementById('form-op')) document.getElementById('form-op').value = "";
+    if (document.getElementById('form-lote')) document.getElementById('form-lote').value = "";
     if (document.getElementById('form-refugo')) document.getElementById('form-refugo').value = "0";
     if (document.getElementById('form-refugo-setup')) document.getElementById('form-refugo-setup').value = "0";
     if (document.getElementById('form-obs')) document.getElementById('form-obs').value = "";
@@ -613,6 +895,7 @@ function resetInputsFormLancamento() {
     if (document.getElementById('form-cav')) document.getElementById('form-cav').value = "";
     if (document.getElementById('form-total-parada')) document.getElementById('form-total-parada').value = "00:00";
     if (document.getElementById('display-total-parada')) document.getElementById('display-total-parada').innerText = "00:00";
+    if (document.getElementById('painel-saldo-op')) document.getElementById('painel-saldo-op').style.display = "none";
 
     listaParadasLancadas = [];
 
@@ -691,7 +974,7 @@ function applyFilterAndFillTable() {
     body.innerHTML = "";
 
     if (res.length === 0) {
-        body.innerHTML = `<tr><td colspan="18" style="text-align:center; color:#64748b; padding:20px;">Nenhum registro encontrado</td></tr>`;
+        body.innerHTML = `<tr><td colspan="20" style="text-align:center; color:#64748b; padding:20px;">Nenhum registro encontrado</td></tr>`;
         return;
     }
 
@@ -712,7 +995,9 @@ function applyFilterAndFillTable() {
             <td>${i.nomeOperador || '-'}</td>
             <td><b>${maqFormatada}</b></td>
             <td>${i.produto}</td>
+            <td>${i.descricaoProduto || '-'}</td>
             <td>${i.nrOp || '-'}</td>
+            <td>${i.lote || '-'}</td>
             <td>${i.inicioTurno}</td><td>${i.fimTurno}</td><td>${i.qtdReal}</td><td>${i.qtdRefugo || 0}</td><td>${i.qtdRefugoSetup || 0}</td>
             <td>${i.cavidades || 0}</td><td>${i.ciclo || 0}</td>
             <td><b style="color:${Number(String(i.efetividade).replace('%','') || 0)>=85?'var(--success)':'var(--accent)'}">${i.efetividade || '0%'}</b></td>
@@ -736,7 +1021,9 @@ function loadRecordToEdit(i) {
     document.getElementById('form-fim').value = i.fimTurno;
     document.getElementById('form-maq').value = cleanMachineCode(i.maquina);
     document.getElementById('form-prod').value = i.produto;
+    document.getElementById('form-prod-desc').value = i.descricaoProduto || "";
     document.getElementById('form-op').value = i.nrOp || "";
+    document.getElementById('form-lote').value = i.lote || "";
     document.getElementById('form-refugo').value = i.qtdRefugo || "0";
     document.getElementById('form-refugo-setup').value = i.qtdRefugoSetup || "0";
     document.getElementById('form-ciclo').value = i.ciclo;
@@ -760,6 +1047,7 @@ function loadRecordToEdit(i) {
     document.getElementById('btn-delete-entry').style.display = 'block';
     document.getElementById('btn-save-production').innerText = "ALTERAR REGISTRO";
     calculateEfficiencyPerformance();
+    atualizarPainelSaldoOP();
 }
 
 ['filter-launch-date', 'filter-start-date', 'filter-end-date', 'filter-maq', 'filter-prod', 'filter-user'].forEach(id => {
@@ -775,8 +1063,8 @@ if (csvBtn) {
     csvBtn.onclick = () => {
         let res = cacheDataRecords;
         if (res.length === 0) { alert("Nenhum registro para exportar!"); return; }
-        let csv = "Data;Nome Operador;Maquina;Produto;OP;Refugo;Refugo Setup;Inicio;Fim;Cavidades;Ciclo;Total Paradas;Real;Efetividade;Criador\n";
-        res.forEach(i => { csv += `${i.data};${i.nomeOperador || ''};${cleanMachineCode(i.maquina)};${i.produto};${i.nrOp || ''};${i.qtdRefugo || 0};${i.qtdRefugoSetup || 0};${i.inicioTurno};${i.fimTurno};${i.cavidades};${i.ciclo};${i.totalParado};${i.qtdReal};${i.efetividade};${i.criadoPor}\n`; });
+        let csv = "Data;Nome Operador;Maquina;Produto;Descricao;OP;Lote;Refugo;Refugo Setup;Inicio;Fim;Cavidades;Ciclo;Total Paradas;Real;Efetividade;Criador\n";
+        res.forEach(i => { csv += `${i.data};${i.nomeOperador || ''};${cleanMachineCode(i.maquina)};${i.produto};${i.descricaoProduto || ''};${i.nrOp || ''};${i.lote || ''};${i.qtdRefugo || 0};${i.qtdRefugoSetup || 0};${i.inicioTurno};${i.fimTurno};${i.cavidades};${i.ciclo};${i.totalParado};${i.qtdReal};${i.efetividade};${i.criadoPor}\n`; });
         const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `PROD_TECH_Export.csv`;
         document.body.appendChild(link); link.click(); document.body.removeChild(link);
@@ -836,12 +1124,15 @@ if (createOpBtn) {
 }
 
 function setTodayOnDateField() {
+    const hoje = new Date();
+    const tzOffset = hoje.getTimezoneOffset() * 60000;
+    const hojeStr = new Date(hoje.getTime() - tzOffset).toISOString().slice(0, 10);
+
     const dateEl = document.getElementById('form-data');
-    if (dateEl) {
-        const hoje = new Date();
-        const tzOffset = hoje.getTimezoneOffset() * 60000;
-        dateEl.value = new Date(hoje.getTime() - tzOffset).toISOString().slice(0, 10);
-    }
+    if (dateEl) dateEl.value = hojeStr;
+
+    const progDateEl = document.getElementById('prog-data');
+    if (progDateEl) progDateEl.value = hojeStr;
 }
 
 // ==========================================
@@ -900,7 +1191,7 @@ function buildDashboardAnalyticsUI() {
 
     atualizarSelectDatasLancadasDash(cacheDataRecords);
 
-    let prodPorInjetora = Array(12).fill(0);
+    let prodPorInjetora = Array(LISTA_INJETORAS.length).fill(0);
     dadosFiltrados.forEach(i => {
         let cleanCode = cleanMachineCode(i.maquina);
         let index = LISTA_INJETORAS.indexOf(cleanCode);
@@ -958,7 +1249,6 @@ function buildDashboardAnalyticsUI() {
         }
     });
 
-    // Desconta as horas paradas do tempo total do turno para obter o Tempo Produtivo Líquido
     let totalMinutosProdutivos = Math.max(0, totalMinutosTurnoBruto - totalMinutosParados);
     let totalHorasTrabalhadas = totalMinutosProdutivos / 60;
 
@@ -1111,8 +1401,25 @@ window.addEventListener('DOMContentLoaded', () => {
 
     const inputProduto = document.getElementById('form-prod');
     if (inputProduto) {
-        inputProduto.addEventListener('change', (e) => buscarEPreencherProduto(e.target.value));
-        inputProduto.addEventListener('blur', (e) => buscarEPreencherProduto(e.target.value));
+        inputProduto.addEventListener('change', (e) => buscarEPreencherProduto(e.target.value, "apontamento"));
+        inputProduto.addEventListener('blur', (e) => buscarEPreencherProduto(e.target.value, "apontamento"));
+    }
+
+    const inputProgCod = document.getElementById('prog-cod');
+    if (inputProgCod) {
+        inputProgCod.addEventListener('change', (e) => buscarEPreencherProduto(e.target.value, "programacao"));
+        inputProgCod.addEventListener('blur', (e) => buscarEPreencherProduto(e.target.value, "programacao"));
+    }
+
+    const inputOp = document.getElementById('form-op');
+    if (inputOp) {
+        inputOp.addEventListener('input', aoSelecionarOuDigitarOP);
+        inputOp.addEventListener('change', aoSelecionarOuDigitarOP);
+    }
+
+    const selectMaqForm = document.getElementById('form-maq');
+    if (selectMaqForm) {
+        selectMaqForm.addEventListener('change', atualizarDatalistOpsProgramadas);
     }
 
     const selectMes = document.getElementById('dash-select-mes');
