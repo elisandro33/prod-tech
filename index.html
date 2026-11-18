@@ -4,13 +4,547 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PROD-TECH | Controle de Produção e OEE</title>
-    <link rel="stylesheet" href="./style.css?v=8">
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-header: #111c30;
+            --bg-body: #f3f4f6;
+            --primary-blue: #3b82f6;
+            --text-labels: #475569;
+            --input-gray: #e2e8f0;
+            --border-gray: #cbd5e1;
+            --text-dark: #1e293b;
+            --btn-green: #10b981;
+            --danger: #ef4444;
+            --success: #10b981;
+            --accent: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-body);
+            color: var(--text-dark);
+            overflow-x: hidden;
+        }
+
+        #app-screen {
+            min-height: 100vh;
+            width: 100%;
+            position: relative;
+        }
+
+        .sidebar, #sidebar {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            bottom: 0 !important;
+            height: 100vh !important;
+            width: 250px !important;
+            background-color: var(--bg-header);
+            color: white;
+            padding: 20px 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: stretch;
+            gap: 8px;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .sidebar .logo {
+            margin-bottom: 16px;
+            font-size: 1.35rem;
+            color: var(--primary-blue);
+            font-weight: 900;
+            letter-spacing: 0.5px;
+            padding: 0 8px;
+        }
+
+        .sidebar-nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            color: #94a3b8;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            text-align: left;
+            width: 100%;
+            flex: none !important;
+            transition: all 0.2s ease;
+        }
+
+        .sidebar-nav-item:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+        }
+
+        .sidebar-nav-item.active {
+            background-color: rgba(59, 130, 246, 0.15);
+            color: #ffffff;
+            border-bottom: 2px solid var(--primary-blue);
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .main-content, #main-content {
+            margin-left: 250px !important;
+            padding: 24px 24px 24px 30px;
+            width: calc(100% - 250px) !important;
+            max-width: calc(100% - 250px) !important;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .view-content {
+            display: none;
+            width: 100%;
+        }
+
+        .view-content.active {
+            display: block;
+        }
+
+        .dashboard-title {
+            margin-top: 0;
+            margin-bottom: 18px;
+            font-size: 1.45rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .ui-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            width: 100%;
+        }
+
+        /* CARDS OEE (IMAGEM ooe.jpg) */
+        .oee-kpi-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .oee-kpi-card {
+            background: #ffffff;
+            border-radius: 14px;
+            padding: 18px 20px;
+            border: 1px solid #e2e8f0;
+            border-left: 6px solid #16a34a;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .oee-kpi-label {
+            display: block;
+            font-size: 0.74rem;
+            font-weight: 800;
+            color: #64748b;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .oee-kpi-val {
+            font-size: 2.1rem;
+            font-weight: 900;
+            line-height: 1.1;
+            margin-bottom: 8px;
+        }
+
+        .oee-kpi-sub {
+            font-size: 0.78rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        /* BANNER ESTIMATIVA DE CICLO (PROGRAMAR) */
+        .ciclo-ref-banner {
+            background: #eff6ff;
+            border: 1.5px solid #93c5fd;
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+        }
+
+        /* FILTROS POR COLUNA */
+        .filter-row th {
+            background-color: #e2e8f0;
+            padding: 6px 8px;
+            border-bottom: 1px solid #cbd5e1;
+        }
+
+        .col-filter-input {
+            width: 100%;
+            min-width: 72px;
+            padding: 6px 8px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: #1e293b;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            outline: none;
+        }
+
+        .col-filter-input:focus {
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+        }
+
+        .btn-clear-col-filters {
+            width: 100%;
+            padding: 6px 10px;
+            background: #64748b;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.74rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+
+        .btn-clear-col-filters:hover {
+            background: #475569;
+        }
+
+        /* PAINEL SALDO O.P. */
+        .op-progress-banner {
+            background: #eff6ff;
+            border: 1.5px solid #93c5fd;
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+        }
+
+        .op-progress-banner.completed {
+            background: #f0fdf4;
+            border-color: #86efac;
+        }
+
+        .op-progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+            font-weight: 800;
+            font-size: 0.9rem;
+            color: #1e3a8a;
+        }
+
+        .op-badge-open {
+            background: #dbeafe;
+            color: #1d4ed8;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 800;
+        }
+
+        .op-badge-done {
+            background: #dcfce7;
+            color: #15803d;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 800;
+        }
+
+        .op-progress-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        .op-stat-item {
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+        }
+
+        .op-stat-label {
+            display: block;
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: #64748b;
+            margin-bottom: 3px;
+        }
+
+        .op-stat-num {
+            font-size: 1.15rem;
+            font-weight: 900;
+            color: #0f172a;
+        }
+
+        /* KPIs E BOTÕES */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .kpi-card {
+            margin-bottom: 0;
+            padding: 16px 20px;
+        }
+
+        .kpi-value {
+            font-size: 1.85rem;
+            font-weight: 900;
+            color: #0f172a;
+            margin-top: 4px;
+        }
+
+        .filter-pill-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            color: #475569;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .filter-pill-btn.active {
+            background: var(--primary-blue);
+            color: white;
+            border-color: var(--primary-blue);
+        }
+
+        /* FORMULÁRIOS E TABELAS */
+        .ui-label {
+            display: block;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--text-labels);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+
+        .input-select-gray {
+            width: 100%;
+            background-color: var(--input-gray);
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 0.95rem;
+            color: #1e293b;
+            outline: none;
+            margin-bottom: 14px;
+        }
+
+        .input-text-white {
+            width: 100%;
+            background-color: white;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 0.95rem;
+            color: #1e293b;
+            outline: none;
+            margin-bottom: 14px;
+        }
+
+        .form-row-half {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        .section-title-blue {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--primary-blue);
+            text-transform: uppercase;
+            margin: 8px 0 14px 0;
+            border-bottom: 2px solid #eff6ff;
+            padding-bottom: 4px;
+        }
+
+        .oee-box-display {
+            color: white;
+            padding: 16px;
+            border-radius: 14px;
+            text-align: center;
+            margin-bottom: 14px;
+            font-weight: bold;
+            background: var(--danger);
+        }
+
+        #oee-pct {
+            font-size: 2.2rem;
+            font-weight: 900;
+            display: block;
+        }
+
+        .btn-submit-system {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--primary-blue);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+
+        .btn-export-green {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--btn-green);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            cursor: pointer;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .table-scroll-holder {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        th {
+            background-color: #f1f5f9;
+            color: #475569;
+            padding: 12px 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.78rem;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #1e293b;
+            vertical-align: middle;
+        }
+
+        .fullscreen-gate {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0f172a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 99999;
+            padding: 20px;
+        }
+
+        .gate-card {
+            background: white;
+            padding: 30px 20px;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 380px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgb(0 0 0 / 0.3);
+        }
+
+        .gate-title {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 8px;
+        }
+
+        @media (max-width: 980px) {
+            .oee-kpi-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar, #sidebar {
+                position: relative !important;
+                width: 100% !important;
+                height: auto !important;
+            }
+
+            .main-content, #main-content {
+                margin-left: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 12px !important;
+            }
+
+            .form-row-half {
+                grid-template-columns: 1fr !important;
+                gap: 0 !important;
+            }
+
+            .oee-kpi-row {
+                grid-template-columns: 1fr;
+            }
+
+            .op-progress-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
 </head>
 <body>
 
-    <!-- TELA 1: SETUP INICIAL (Primeiro Acesso Master) -->
+    <!-- TELA 1: SETUP INICIAL -->
     <div id="setup-screen" class="fullscreen-gate" style="display: none;">
         <div class="gate-card">
             <div class="gate-title">PROD-TECH</div>
@@ -132,12 +666,35 @@
                     </div>
                 </div>
 
-                <!-- KPIs -->
-                <div class="kpi-grid">
-                    <div class="ui-card kpi-card" style="border-left: 5px solid var(--primary-blue);">
-                        <span class="ui-label">OEE GLOBAL</span>
-                        <div id="dash-card-oee" class="kpi-value">0%</div>
+                <!-- CARDS OEE (CONFORME IMAGEM ooe.jpg: DISPONIBILIDADE x PERFORMANCE x QUALIDADE = OEE GERAL) -->
+                <div class="oee-kpi-row">
+                    <div class="oee-kpi-card" id="card-oee-disp" style="border-left-color: #16a34a;">
+                        <span class="oee-kpi-label">DISPONIBILIDADE</span>
+                        <div class="oee-kpi-val" id="oee-val-disp" style="color: #16a34a;">0,0%</div>
+                        <div class="oee-kpi-sub" id="oee-sub-disp">0,0h de base · regra oficial da aba OEE</div>
                     </div>
+
+                    <div class="oee-kpi-card" id="card-oee-perf" style="border-left-color: #f59e0b;">
+                        <span class="oee-kpi-label">PERFORMANCE</span>
+                        <div class="oee-kpi-val" id="oee-val-perf" style="color: #f59e0b;">0,0%</div>
+                        <div class="oee-kpi-sub" id="oee-sub-perf">0 produzidas / 0 teóricas</div>
+                    </div>
+
+                    <div class="oee-kpi-card" id="card-oee-qual" style="border-left-color: #16a34a;">
+                        <span class="oee-kpi-label">QUALIDADE</span>
+                        <div class="oee-kpi-val" id="oee-val-qual" style="color: #16a34a;">0,0%</div>
+                        <div class="oee-kpi-sub" id="oee-sub-qual">0 boas / 0 produzidas · 0 refugos</div>
+                    </div>
+
+                    <div class="oee-kpi-card" id="card-oee-geral" style="border-left-color: #16a34a;">
+                        <span class="oee-kpi-label">OEE GERAL</span>
+                        <div class="oee-kpi-val" id="oee-val-geral" style="color: #16a34a;">0,0%</div>
+                        <div class="oee-kpi-sub" id="oee-sub-geral">Calculado para o filtro atual</div>
+                    </div>
+                </div>
+
+                <!-- KPIs Secundários de Horas -->
+                <div class="kpi-grid">
                     <div class="ui-card kpi-card" style="border-left: 5px solid var(--danger);">
                         <span class="ui-label">HORAS PARADAS</span>
                         <div id="dash-card-parado" class="kpi-value">0h 0m</div>
@@ -146,8 +703,12 @@
                         <span class="ui-label">TEMPO PRODUTIVO</span>
                         <div id="dash-card-utilizado" class="kpi-value">0h 0m</div>
                     </div>
+                    <div class="ui-card kpi-card" style="border-left: 5px solid var(--primary-blue);">
+                        <span class="ui-label">HORAS DISPONÍVEIS (PROG.)</span>
+                        <div id="dash-card-disp-prog" class="kpi-value">0,0h</div>
+                    </div>
                     <div class="ui-card kpi-card" style="border-left: 5px solid var(--accent);">
-                        <span class="ui-label">APROVEITAMENTO</span>
+                        <span class="ui-label">APROVEITAMENTO CARGA</span>
                         <div id="dash-txt-aproveitamento" class="kpi-value">0%</div>
                     </div>
                 </div>
@@ -163,13 +724,13 @@
                 <!-- Gráficos Índices OEE e Balanço -->
                 <div class="form-row-half">
                     <div class="ui-card">
-                        <span class="ui-label">ÍNDICES DO OEE</span>
+                        <span class="ui-label">ÍNDICES DO OEE (DISPONIBILIDADE × PERFORMANCE × QUALIDADE)</span>
                         <div style="height: 230px; position: relative;">
                             <canvas id="chartIndicesOEE"></canvas>
                         </div>
                     </div>
                     <div class="ui-card">
-                        <span class="ui-label">BALANÇO CARGA MÁQUINA</span>
+                        <span class="ui-label">BALANÇO CARGA MÁQUINA (DISPONÍVEL VS UTILIZADO)</span>
                         <div style="height: 230px; position: relative;">
                             <canvas id="chartBalançoCarga"></canvas>
                         </div>
@@ -191,16 +752,16 @@
 
                 <div class="ui-card">
                     <input type="hidden" id="prog-edit-id">
-                    <div class="section-title-blue">Cadastrar / Editar Ordem Programada</div>
+                    <div class="section-title-blue">Cadastrar / Editar Ordem Programada (Todos os campos são obrigatórios)</div>
 
                     <div class="form-row-half">
                         <div>
                             <label class="ui-label">Data de Programação *</label>
-                            <input type="date" id="prog-data" class="input-text-white">
+                            <input type="date" id="prog-data" class="input-text-white" required>
                         </div>
                         <div>
                             <label class="ui-label">Injetora (INJ) *</label>
-                            <select id="prog-maq" class="input-select-gray">
+                            <select id="prog-maq" class="input-select-gray" required>
                                 <option value="">-- Selecione a Injetora --</option>
                                 <option value="01">INJ-01</option>
                                 <option value="02">INJ-02</option>
@@ -222,28 +783,44 @@
                     <div class="form-row-half">
                         <div>
                             <label class="ui-label">Número da O.P. *</label>
-                            <input type="text" id="prog-op" class="input-text-white" placeholder="Ex: 43221">
+                            <input type="text" id="prog-op" class="input-text-white" placeholder="Ex: 43221" required>
                         </div>
                         <div>
                             <label class="ui-label">Número do Lote *</label>
-                            <input type="text" id="prog-lote" class="input-text-white" placeholder="Ex: L-2026-01">
+                            <input type="text" id="prog-lote" class="input-text-white" placeholder="Ex: L-2026-01" required>
                         </div>
                     </div>
 
                     <div class="form-row-half">
                         <div>
                             <label class="ui-label">Código do Produto *</label>
-                            <input type="text" id="prog-cod" class="input-text-white" placeholder="Ex: 00.500.432">
+                            <input type="text" id="prog-cod" class="input-text-white" placeholder="Ex: 00.500.432" required>
                         </div>
                         <div>
                             <label class="ui-label">Qtde a Produzir (Peças) *</label>
-                            <input type="number" id="prog-qtd" class="input-text-white" placeholder="Ex: 15000">
+                            <input type="number" id="prog-qtd" class="input-text-white" placeholder="Ex: 15000" required>
                         </div>
                     </div>
 
-                    <div>
-                        <label class="ui-label">Descrição do Produto *</label>
-                        <input type="text" id="prog-desc" class="input-text-white" placeholder="Ex: Tampa Plástica 50mm Azul">
+                    <div class="form-row-half">
+                        <div>
+                            <label class="ui-label">Descrição do Produto *</label>
+                            <input type="text" id="prog-desc" class="input-text-white" placeholder="Ex: Tampa Plástica 50mm Azul" required>
+                        </div>
+                        <div>
+                            <label class="ui-label">Horas Disponíveis da Máquina *</label>
+                            <input type="number" step="0.1" id="prog-horas-disp" class="input-text-white" placeholder="Ex: 24 ou 8.8" required>
+                        </div>
+                    </div>
+
+                    <!-- BANNER DE REFERÊNCIA DE TEMPO ESTIMADO BASEADO NO CICLO DO PRODUTO -->
+                    <div id="banner-estimativa-ciclo" class="ciclo-ref-banner">
+                        <div style="font-weight: 800; color: #1e3a8a; font-size: 0.85rem; margin-bottom: 6px;">
+                            ⏱️ REFERÊNCIA DE TEMPO PARA PRODUZIR A O.P. (BASEADO NO CICLO)
+                        </div>
+                        <div id="txt-estimativa-ciclo" style="font-size: 0.85rem; color: #334155;">
+                            Informe o <b>Código do Produto</b> e a <b>Qtde a Produzir</b> para calcular as horas estimadas.
+                        </div>
                     </div>
 
                     <button id="btn-save-programacao" class="btn-submit-system">SALVAR PROGRAMAÇÃO</button>
@@ -263,6 +840,8 @@
                                     <th>Lote</th>
                                     <th>Código</th>
                                     <th>Descrição do Produto</th>
+                                    <th>Horas Disp.</th>
+                                    <th>Horas Est. (Ciclo)</th>
                                     <th>Programado</th>
                                     <th>Produzido</th>
                                     <th>Faltante</th>
@@ -289,11 +868,13 @@
                                             <option value="13">INJ-13</option>
                                         </select>
                                     </th>
-                                    <th><input type="text" id="f-prog-op" class="col-filter-input" placeholder="Filtrar O.P."></th>
-                                    <th><input type="text" id="f-prog-lote" class="col-filter-input" placeholder="Filtrar Lote"></th>
-                                    <th><input type="text" id="f-prog-cod" class="col-filter-input" placeholder="Filtrar Cód."></th>
-                                    <th><input type="text" id="f-prog-desc" class="col-filter-input" placeholder="Filtrar Descrição"></th>
-                                    <th><input type="text" id="f-prog-qtd" class="col-filter-input" placeholder="Qtde"></th>
+                                    <th><input type="text" id="f-prog-op" class="col-filter-input" placeholder="O.P."></th>
+                                    <th><input type="text" id="f-prog-lote" class="col-filter-input" placeholder="Lote"></th>
+                                    <th><input type="text" id="f-prog-cod" class="col-filter-input" placeholder="Código"></th>
+                                    <th><input type="text" id="f-prog-desc" class="col-filter-input" placeholder="Descrição"></th>
+                                    <th><input type="text" id="f-prog-hdisp" class="col-filter-input" placeholder="Horas"></th>
+                                    <th><input type="text" id="f-prog-hest" class="col-filter-input" placeholder="Est."></th>
+                                    <th><input type="text" id="f-prog-qtd" class="col-filter-input" placeholder="Prog."></th>
                                     <th><input type="text" id="f-prog-prod" class="col-filter-input" placeholder="Prod."></th>
                                     <th><input type="text" id="f-prog-falt" class="col-filter-input" placeholder="Falt."></th>
                                     <th>
@@ -480,7 +1061,7 @@
 
                     <!-- Display de OEE -->
                     <div class="oee-box-display">
-                        <span style="font-size:0.8rem; text-transform:uppercase; opacity:0.9;">Eficiência Calculada (OEE)</span>
+                        <span style="font-size:0.8rem; text-transform:uppercase; opacity:0.9;">OEE do Turno (Disp. × Perf. × Qual.)</span>
                         <span id="oee-pct">0%</span>
                         <span id="oee-target" style="font-size:0.85rem; opacity:0.9;">meta=0</span>
                     </div>
@@ -605,7 +1186,446 @@
         </main>
     </div>
 
-    <!-- SCRIPT PRINCIPAL -->
-    <script src="./app.js?v=8"></script>
-</body>
-</html>
+    <script>
+        // ========================================================
+        // COLE AQUI A URL DO SEU WEB APP DO GOOGLE APPS SCRIPT:
+        // ========================================================
+        const GOOGLE_SCRIPT_URL = "COLE_AQUI_SUA_URL_DO_GOOGLE_APPS_SCRIPT";
+
+        function pad2(code) {
+            if (code === null || code === undefined) return "";
+            const str = String(code).trim();
+            if (!str) return "";
+            return str.length === 1 ? "0" + str : str;
+        }
+
+        function cleanMachineCode(input) {
+            if (input === null || input === undefined) return "";
+            const str = String(input).trim();
+            const digitsOnly = str.replace(/\D/g, '');
+            if (!digitsOnly) return str.toUpperCase();
+            return pad2(digitsOnly);
+        }
+
+        function formatPtNumber(val, decimals = 1) {
+            const num = Number(val) || 0;
+            return num.toLocaleString('pt-BR', {
+                minimumFractionDigits: decimals,
+                maximumFractionDigits: decimals
+            });
+        }
+
+        function formatSheetTime(val) {
+            if (!val) return "00:00";
+            const str = String(val).trim();
+            if (str.includes("T")) {
+                const d = new Date(str);
+                if (!isNaN(d.getTime())) {
+                    const hh = String(d.getUTCHours()).padStart(2, '0');
+                    const mm = String(d.getUTCMinutes()).padStart(2, '0');
+                    return `${hh}:${mm}`;
+                }
+            }
+            const match = str.match(/(\d{1,2}):(\d{2})/);
+            if (match) return `${match[1].padStart(2, '0')}:${match[2]}`;
+            return "00:00";
+        }
+
+        function formatSheetDate(val) {
+            if (!val) return "";
+            const str = String(val).trim();
+            if (str.includes("T")) return str.split("T")[0];
+            if (str.includes("/")) {
+                const p = str.split("/");
+                if (p.length === 3) return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
+            }
+            return str;
+        }
+
+        function formatSheetOEE(val) {
+            if (val === null || val === undefined || val === "") return "0%";
+            const str = String(val).trim();
+            if (str.includes("%")) return str;
+            const num = parseFloat(str.replace(",", "."));
+            if (!isNaN(num)) {
+                return num <= 1.5 && num > 0 ? `${Math.round(num * 100)}%` : `${Math.round(num)}%`;
+            }
+            return "0%";
+        }
+
+        let instChartBalanço = null;
+        let instChartIndices = null;
+        let instChartPareto = null;
+        let instChartMaquinas = null;
+        let dashPeriodoAtual = 'mes_especifico';
+
+        let activeUserRoleAdmin = false;
+        let authenticatedUserRef = null;
+        let cacheDataRecords = [];
+        let cacheProdutosList = [];
+        let cacheProgramacaoList = [];
+        let cacheUsuariosList = [];
+        let listaParadasLancadas = [];
+
+        const MOTIVOS_PARADAS_DATA = [
+            { cod: "01", desc: "Set Up - Início de Produção" },
+            { cod: "02", desc: "Set Up - Manutenção de Ferramental/Molde" },
+            { cod: "03", desc: "Aguardando Empilhadeira / Talha" },
+            { cod: "04", desc: "Limpeza de máquina" },
+            { cod: "05", desc: "Reposição de Material" },
+            { cod: "06", desc: "Ajuste de Parâmetros do Processo" },
+            { cod: "07", desc: "Deslocamento" },
+            { cod: "08", desc: "Falta de Energia" },
+            { cod: "09", desc: "Aguardando Material" },
+            { cod: "10", desc: "Inspeção de Liberação" },
+            { cod: "11", desc: "Problemas de Qualidade - Produto" },
+            { cod: "12", desc: "Problemas de Qualidade - Material" },
+            { cod: "13", desc: "Ajuste de Ferramenta/Molde em Máquina" },
+            { cod: "14", desc: "Ferramenta/molde em Manutenção" },
+            { cod: "15", desc: "Espera de apoio da Ferramentaria" },
+            { cod: "16", desc: "Ajuste de Periféricos da máquina" },
+            { cod: "17", desc: "Manutenção Corretiva - Elétrica" },
+            { cod: "18", desc: "Manutenção Corretiva - Mecânica" },
+            { cod: "19", desc: "Try out" },
+            { cod: "20", desc: "Falta de embalagem" },
+            { cod: "21", desc: "Outros" }
+        ];
+
+        const LISTA_INJETORAS = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13"];
+
+        async function apiSheets(payload) {
+            if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("COLE_AQUI")) {
+                alert("Configure a GOOGLE_SCRIPT_URL no arquivo index.html antes de continuar.");
+                throw new Error("URL do Apps Script não configurada.");
+            }
+
+            const response = await fetch(GOOGLE_SCRIPT_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(payload)
+            });
+
+            return await response.json();
+        }
+
+        function normalizarRegistrosProducao(lista) {
+            return (lista || []).map(item => ({
+                ...item,
+                data: formatSheetDate(item.data),
+                produto: String(item.produto || "").trim(),
+                descricaoProduto: String(item.descricaoProduto || "").trim(),
+                nrOp: String(item.nrOp || "").trim(),
+                lote: String(item.lote || "").trim(),
+                inicioTurno: formatSheetTime(item.inicioTurno),
+                fimTurno: formatSheetTime(item.fimTurno),
+                totalParado: formatSheetTime(item.totalParado),
+                efetividade: formatSheetOEE(item.efetividade)
+            }));
+        }
+
+        function normalizarProgramacao(lista) {
+            return (lista || []).map(item => ({
+                ...item,
+                data: formatSheetDate(item.data),
+                maquina: cleanMachineCode(item.maquina),
+                nrOp: String(item.nrOp || "").trim(),
+                lote: String(item.lote || "").trim(),
+                codigoProduto: String(item.codigoProduto || "").trim().toUpperCase(),
+                descricaoProduto: String(item.descricaoProduto || "").trim(),
+                qtdProgramada: Number(item.qtdProgramada) || 0,
+                horasDisponiveis: parseFloat(String(item.horasDisponiveis || 0).replace(",", ".")) || 0,
+                horasEstimadas: parseFloat(String(item.horasEstimadas || 0).replace(",", ".")) || 0
+            }));
+        }
+
+        async function sincronizarDadosGoogleSheets(mostrarAlerta = false) {
+            try {
+                const res = await apiSheets({ action: "getAll" });
+                if (res.status === "ok") {
+                    cacheDataRecords = normalizarRegistrosProducao(res.producao);
+                    cacheProdutosList = res.produtos || [];
+                    cacheProgramacaoList = normalizarProgramacao(res.programacao);
+                    cacheUsuariosList = res.usuarios || [];
+
+                    cacheDataRecords.sort((a, b) => cleanMachineCode(a.maquina).localeCompare(cleanMachineCode(b.maquina), undefined, { numeric: true }));
+
+                    updateLaunchDateFilterOptions();
+                    applyFilterAndFillTable();
+                    renderProgramacaoTable();
+                    atualizarDatalistOpsProgramadas();
+                    atualizarPainelSaldoOP();
+                    renderUsersTable();
+
+                    const dashTab = document.getElementById('dash');
+                    if (dashTab && dashTab.classList.contains('active')) {
+                        buildDashboardAnalyticsUI();
+                    }
+
+                    if (mostrarAlerta) alert("Dados sincronizados com a planilha!");
+                }
+            } catch (e) {
+                console.error("Erro ao sincronizar com Google Sheets:", e);
+            }
+        }
+
+        function buscarEPreencherProduto(codigoInput, destino = "apontamento") {
+            if (!codigoInput) {
+                if (destino === "programacao") atualizarEstimativaHorasCiclo();
+                return;
+            }
+            const idProduto = codigoInput.trim().toUpperCase();
+
+            const produto = cacheProdutosList.find(p => String(p.codigo).trim().toUpperCase() === idProduto);
+            if (produto) {
+                if (destino === "apontamento") {
+                    const elCavidades = document.getElementById('form-cav');
+                    const elCiclo = document.getElementById('form-ciclo');
+                    const elDesc = document.getElementById('form-prod-desc');
+
+                    if (elCavidades && produto.cavidades !== undefined) elCavidades.value = produto.cavidades;
+                    if (elCiclo && produto.ciclo !== undefined) elCiclo.value = produto.ciclo;
+                    if (elDesc && produto.descricao && !elDesc.value) elDesc.value = produto.descricao;
+
+                    calculateEfficiencyPerformance();
+                } else if (destino === "programacao") {
+                    const elProgDesc = document.getElementById('prog-desc');
+                    if (elProgDesc && produto.descricao && !elProgDesc.value) {
+                        elProgDesc.value = produto.descricao;
+                    }
+                }
+            }
+
+            if (destino === "programacao") {
+                atualizarEstimativaHorasCiclo();
+            }
+        }
+
+        function calcularHorasEstimadasProduto(codigoProduto, qtdProgramada) {
+            const codNorm = String(codigoProduto || "").trim().toUpperCase();
+            const qtd = Number(qtdProgramada) || 0;
+            if (!codNorm || qtd <= 0) return { horas: 0, encontrado: false };
+
+            const prod = cacheProdutosList.find(p => String(p.codigo).trim().toUpperCase() === codNorm);
+            if (!prod) return { horas: 0, encontrado: false };
+
+            const ciclo = parseFloat(String(prod.ciclo || 0).replace(",", ".")) || 0;
+            const cavidades = parseFloat(String(prod.cavidades || 0).replace(",", ".")) || 0;
+            if (ciclo <= 0 || cavidades <= 0) return { horas: 0, encontrado: false };
+
+            const pecasPorHora = (3600 / ciclo) * cavidades;
+            const horas = qtd / pecasPorHora;
+
+            return {
+                horas: Number(horas.toFixed(1)),
+                encontrado: true,
+                ciclo,
+                cavidades,
+                pecasPorHora: Math.round(pecasPorHora)
+            };
+        }
+
+        function atualizarEstimativaHorasCiclo() {
+            const txtEl = document.getElementById('txt-estimativa-ciclo');
+            if (!txtEl) return;
+
+            const cod = document.getElementById('prog-cod') ? document.getElementById('prog-cod').value : "";
+            const qtd = document.getElementById('prog-qtd') ? Number(document.getElementById('prog-qtd').value) : 0;
+            const hDisp = document.getElementById('prog-horas-disp') ? parseFloat(document.getElementById('prog-horas-disp').value) || 0 : 0;
+
+            if (!cod || qtd <= 0) {
+                txtEl.innerHTML = `Informe o <b>Código do Produto</b> e a <b>Qtde a Produzir</b> para calcular as horas estimadas.`;
+                return;
+            }
+
+            const est = calcularHorasEstimadasProduto(cod, qtd);
+            if (!est.encontrado) {
+                txtEl.innerHTML = `Produto <b>${cod.toUpperCase()}</b> ainda sem ciclo/cavidades cadastrados. Faça um apontamento deste código para gravar o ciclo automático.`;
+                return;
+            }
+
+            let comparativoHtml = "";
+            if (hDisp > 0) {
+                if (est.horas <= hDisp) {
+                    comparativoHtml = `<span style="color: #15803d; font-weight: 800;">✅ Cabe dentro das ${formatPtNumber(hDisp)}h disponíveis</span>`;
+                } else {
+                    const diff = est.horas - hDisp;
+                    comparativoHtml = `<span style="color: #b91c1c; font-weight: 800;">⚠️ Excede em +${formatPtNumber(diff)}h as ${formatPtNumber(hDisp)}h disponíveis</span>`;
+                }
+            }
+
+            txtEl.innerHTML = `
+                Parâmetros do molde: <b>${est.cavidades} cavidades</b> · Ciclo: <b>${est.ciclo}s</b> (${est.pecasPorHora.toLocaleString('pt-BR')} pçs/hora)<br>
+                Tempo estimado para produzir <b>${qtd.toLocaleString('pt-BR')} peças</b>: <b style="font-size:1rem; color:#1d4ed8;">${formatPtNumber(est.horas)} horas</b> ${comparativoHtml ? ' · ' + comparativoHtml : ''}
+            `;
+        }
+
+        function calcularProducaoAcumuladaOP(nrOp, excluirIdLancamento = "") {
+            if (!nrOp) return 0;
+            const opNorm = String(nrOp).trim().toUpperCase();
+            return cacheDataRecords.reduce((acc, rec) => {
+                if (excluirIdLancamento && String(rec.id) === String(excluirIdLancamento)) return acc;
+                if (String(rec.nrOp || "").trim().toUpperCase() === opNorm) {
+                    return acc + (Number(rec.qtdReal) || 0);
+                }
+                return acc;
+            }, 0);
+        }
+
+        function atualizarDatalistOpsProgramadas() {
+            const datalist = document.getElementById('datalist-ops-programadas');
+            if (!datalist) return;
+
+            const maqFiltro = document.getElementById('form-maq') ? cleanMachineCode(document.getElementById('form-maq').value) : "";
+            datalist.innerHTML = "";
+
+            cacheProgramacaoList.forEach(prog => {
+                const jaProd = calcularProducaoAcumuladaOP(prog.nrOp);
+                const faltante = Math.max(0, prog.qtdProgramada - jaProd);
+                if (!maqFiltro || prog.maquina === maqFiltro) {
+                    const opt = document.createElement('option');
+                    opt.value = prog.nrOp;
+                    opt.label = `INJ-${prog.maquina} | ${prog.codigoProduto} - ${prog.descricaoProduto} (Faltam: ${faltante.toLocaleString('pt-BR')} pçs)`;
+                    datalist.appendChild(opt);
+                }
+            });
+        }
+
+        function aoSelecionarOuDigitarOP() {
+            const opDigitada = document.getElementById('form-op').value.trim().toUpperCase();
+            if (!opDigitada) {
+                atualizarPainelSaldoOP();
+                return;
+            }
+
+            const prog = cacheProgramacaoList.find(p => p.nrOp.toUpperCase() === opDigitada);
+            if (prog) {
+                const elMaq = document.getElementById('form-maq');
+                const elProd = document.getElementById('form-prod');
+                const elDesc = document.getElementById('form-prod-desc');
+                const elLote = document.getElementById('form-lote');
+
+                if (elMaq && prog.maquina) elMaq.value = prog.maquina;
+                if (elProd && prog.codigoProduto) {
+                    elProd.value = prog.codigoProduto;
+                    buscarEPreencherProduto(prog.codigoProduto, "apontamento");
+                }
+                if (elDesc && prog.descricaoProduto) elDesc.value = prog.descricaoProduto;
+                if (elLote && prog.lote) elLote.value = prog.lote;
+            }
+
+            atualizarPainelSaldoOP();
+        }
+
+        function atualizarPainelSaldoOP() {
+            const painel = document.getElementById('painel-saldo-op');
+            if (!painel) return;
+
+            const opDigitada = document.getElementById('form-op') ? document.getElementById('form-op').value.trim().toUpperCase() : "";
+            if (!opDigitada) {
+                painel.style.display = "none";
+                return;
+            }
+
+            const prog = cacheProgramacaoList.find(p => p.nrOp.toUpperCase() === opDigitada);
+            if (!prog) {
+                painel.style.display = "none";
+                return;
+            }
+
+            const editId = document.getElementById('entry-edit-id') ? document.getElementById('entry-edit-id').value : "";
+            const jaProduzido = calcularProducaoAcumuladaOP(prog.nrOp, editId);
+            const qtdAtualTurno = Number(document.getElementById('form-real').value) || 0;
+            const totalComTurno = jaProduzido + qtdAtualTurno;
+            const faltante = Math.max(0, prog.qtdProgramada - totalComTurno);
+
+            painel.style.display = "block";
+            document.getElementById('op-banner-titulo').innerText = `📋 O.P. ${prog.nrOp} | Lote: ${prog.lote || '-'} | INJ-${prog.maquina}`;
+            document.getElementById('op-banner-subtitulo').innerText = `Produto: ${prog.codigoProduto} - ${prog.descricaoProduto} | Horas Disp. Prog.: ${formatPtNumber(prog.horasDisponiveis)}h`;
+
+            document.getElementById('op-stat-prog').innerText = prog.qtdProgramada.toLocaleString('pt-BR');
+            document.getElementById('op-stat-ant').innerText = jaProduzido.toLocaleString('pt-BR');
+            document.getElementById('op-stat-atual').innerText = qtdAtualTurno.toLocaleString('pt-BR');
+
+            const elFaltante = document.getElementById('op-stat-faltante');
+            const elStatus = document.getElementById('op-banner-status');
+
+            elFaltante.innerText = faltante.toLocaleString('pt-BR');
+            if (faltante === 0) {
+                painel.classList.add('completed');
+                elFaltante.style.color = "var(--success)";
+                elStatus.className = "op-badge-done";
+                elStatus.innerText = "O.P. CONCLUÍDA";
+            } else {
+                painel.classList.remove('completed');
+                elFaltante.style.color = "var(--danger)";
+                elStatus.className = "op-badge-open";
+                elStatus.innerText = "EM ANDAMENTO";
+            }
+        }
+
+        const saveProgBtn = document.getElementById('btn-save-programacao');
+        if (saveProgBtn) {
+            saveProgBtn.onclick = async () => {
+                if (!authenticatedUserRef) return;
+
+                const eid = document.getElementById('prog-edit-id').value;
+                const data = document.getElementById('prog-data').value.trim();
+                const maquina = cleanMachineCode(document.getElementById('prog-maq').value);
+                const nrOp = document.getElementById('prog-op').value.trim();
+                const lote = document.getElementById('prog-lote').value.trim();
+                const codigoProduto = document.getElementById('prog-cod').value.trim().toUpperCase();
+                const descricaoProduto = document.getElementById('prog-desc').value.trim();
+                const qtdProgramada = Number(document.getElementById('prog-qtd').value) || 0;
+                const horasDisponiveis = parseFloat(String(document.getElementById('prog-horas-disp').value).replace(",", ".")) || 0;
+
+                if (!data || !maquina || !nrOp || !lote || !codigoProduto || !descricaoProduto || qtdProgramada <= 0 || horasDisponiveis <= 0) {
+                    alert("Todos os campos da programação são obrigatórios!\nPreencha: Data, Injetora, Nº O.P., Lote, Código do Produto, Qtde a Produzir, Descrição e Horas Disponíveis da Máquina.");
+                    return;
+                }
+
+                const est = calcularHorasEstimadasProduto(codigoProduto, qtdProgramada);
+                const horasEstimadas = est.encontrado ? est.horas : 0;
+
+                saveProgBtn.disabled = true;
+                saveProgBtn.innerText = "SALVANDO PROGRAMAÇÃO...";
+
+                try {
+                    const res = await apiSheets({
+                        action: "saveProgramacao",
+                        packet: {
+                            id: eid || "",
+                            data,
+                            maquina,
+                            nrOp,
+                            lote,
+                            codigoProduto,
+                            descricaoProduto,
+                            qtdProgramada,
+                            horasDisponiveis,
+                            horasEstimadas,
+                            criadoPor: authenticatedUserRef.email
+                        }
+                    });
+
+                    if (res.status === "ok") {
+                        await sincronizarDadosGoogleSheets();
+                        alert(eid ? "Programação atualizada com sucesso!" : "O.P. programada com sucesso!");
+                        resetFormProgramacao();
+                    } else {
+                        alert("Erro ao salvar programação: " + (res.message || ""));
+                    }
+                } catch (err) {
+                    alert(err.message);
+                } finally {
+                    saveProgBtn.disabled = false;
+                    saveProgBtn.innerText = "SALVAR PROGRAMAÇÃO";
+                }
+            };
+        }
+
+        function resetFormProgramacao() {
+            document.getElementById('prog-edit-id').value = "";
+            document.getElementById('prog-maq').value = "";
+            document.getElementById('prog-op').value = "";
+            document.getElementById('prog-lote').value = "";
+            document.getElementById('prog-cod').value = "";
