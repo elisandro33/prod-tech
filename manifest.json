@@ -10,13 +10,13 @@
   "theme_color": "#111c30",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/1541/1541425.png",
+      "src": "./icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/1541/1541425.png",
+      "src": "./icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
