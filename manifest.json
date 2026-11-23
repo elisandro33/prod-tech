@@ -1,5 +1,5 @@
 {
-  "name": "PROD-TECH | Controle de Produção",
+  "name": "PROD-TECH",
   "short_name": "PROD-TECH",
   "description": "Sistema de Programação, Apontamento de Produção e OEE em tempo real",
   "start_url": "./index.html",
