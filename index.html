@@ -1167,7 +1167,7 @@
 
     <script>
         // ========================================================
-        // COLE AQUI A URL DO SEU WEB APP DO GOOGLE APPS SCRIPT:
+        // URL DO SEU WEB APP DO GOOGLE APPS SCRIPT (PROD-TECH):
         // ========================================================
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyt0-k9jkWcIHe4nQcgjyWe_PADniW1q1SLLB3gdPbHKcXIjllPyZVpRl7C-mQ1cp32_w/exec";
 
@@ -1326,6 +1326,7 @@
             try {
                 const response = await fetch(GOOGLE_SCRIPT_URL, {
                     method: "POST",
+                    redirect: "follow",
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify(payload),
                     signal: controller.signal
@@ -1335,9 +1336,18 @@
             } catch (err) {
                 clearTimeout(timeoutId);
                 if (err.name === 'AbortError') {
-                    throw new Error("Tempo limite excedido ao conectar com o Google Planilhas. Verifique a implantação.");
+                    throw new Error("Tempo limite excedido ao conectar com o Google Planilhas.");
                 }
-                throw err;
+                if (payload.action === "getAll" || payload.action === "login") {
+                    const urlGet = new URL(GOOGLE_SCRIPT_URL);
+                    urlGet.searchParams.set("action", payload.action);
+                    if (payload.email) urlGet.searchParams.set("email", payload.email);
+                    if (payload.senha) urlGet.searchParams.set("senha", payload.senha);
+
+                    const resGet = await fetch(urlGet.toString(), { method: "GET", redirect: "follow" });
+                    return await resGet.json();
+                }
+                throw new Error("Falha de conexão com a planilha. Verifique sua internet ou a implantação no Google Apps Script.");
             }
         }
 
@@ -1829,7 +1839,7 @@
         if (setupBtn) {
             setupBtn.onclick = async () => {
                 const email = document.getElementById('setup-email').value.trim().toLowerCase();
-                const pass = document.getElementById('setup-senha').value;
+                const pass = document.getElementById('setup-senha').value.trim();
                 if (!email.includes('@') || pass.length < 6) { alert("Insira um e-mail válido e senha com no mínimo 6 caracteres."); return; }
 
                 setupBtn.disabled = true;
@@ -1855,7 +1865,7 @@
         if (loginBtn) {
             loginBtn.onclick = async () => {
                 const email = document.getElementById('login-email').value.trim().toLowerCase();
-                const pass = document.getElementById('login-senha').value;
+                const pass = document.getElementById('login-senha').value.trim();
                 const errBox = document.getElementById('login-erro-banner');
 
                 if (!email || !pass) {
