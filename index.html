@@ -25,6 +25,7 @@
             --danger: #ef4444;
             --success: #16a34a;
             --btn-green: #16a34a;
+            --purple: #6366f1;
         }
 
         * {
@@ -129,6 +130,7 @@
             bottom: 0;
             left: 0;
             z-index: 100;
+            overflow-y: auto;
         }
 
         .sidebar-logo {
@@ -138,7 +140,17 @@
             text-align: center;
             padding-bottom: 20px;
             border-bottom: 1px solid #1e293b;
-            margin-bottom: 24px;
+            margin-bottom: 18px;
+        }
+
+        .sidebar-section-label {
+            font-size: 0.66rem;
+            font-weight: 800;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: #64748b;
+            padding: 10px 12px 6px 12px;
+            margin-top: 4px;
         }
 
         .sidebar-nav-item {
@@ -146,12 +158,12 @@
             border: none;
             color: #cbd5e1;
             text-align: left;
-            padding: 13px 16px;
+            padding: 12px 14px;
             border-radius: 8px;
-            font-size: 0.92rem;
+            font-size: 0.9rem;
             font-weight: 600;
             cursor: pointer;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             display: flex;
             align-items: center;
             gap: 10px;
@@ -165,6 +177,11 @@
 
         .sidebar-nav-item.active {
             background: var(--primary-blue);
+            color: var(--white);
+        }
+
+        .sidebar-nav-item.active-red {
+            background: #dc2626;
             color: var(--white);
         }
 
@@ -208,9 +225,15 @@
 
         .dashboard-title {
             font-size: 1.45rem;
-            font-weight: 700;
+            font-weight: 800;
             color: var(--text-dark);
-            margin-bottom: 20px;
+            margin-bottom: 4px;
+        }
+
+        .dashboard-subtitle {
+            font-size: 0.84rem;
+            color: var(--text-muted);
+            margin-bottom: 18px;
         }
 
         .ui-card {
@@ -456,11 +479,12 @@
         }
 
         .oee-kpi-value {
-            font-size: 2rem;
+            font-size: 1.9rem;
             font-weight: 800;
             color: #16a34a;
-            line-height: 1.1;
+            line-height: 1.15;
             margin-bottom: 8px;
+            word-break: break-word;
         }
 
         .oee-kpi-sub {
@@ -488,6 +512,64 @@
         .kpi-card-value {
             font-size: 1.65rem;
             font-weight: 800;
+        }
+
+        /* ========================================================
+           CARDS ESPECÍFICOS DE SETUP & ITENS IMPRODUTIVOS
+           ======================================================== */
+        .setup-turno-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px 18px;
+        }
+
+        .setup-turno-label {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #475569;
+            margin-bottom: 6px;
+        }
+
+        .setup-turno-count {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .setup-turno-hours {
+            font-size: 0.78rem;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .summary-banner-purple {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-left: 5px solid #4f46e5;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .summary-banner-title {
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: #4f46e5;
+            margin-bottom: 10px;
+        }
+
+        .summary-banner-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            font-size: 0.84rem;
+            color: #334155;
+            line-height: 1.55;
         }
 
         .charts-grid-2 {
@@ -682,6 +764,15 @@
             font-weight: 700;
         }
 
+        .op-badge-crit {
+            background: #fee2e2;
+            color: #b91c1c;
+            padding: 3px 8px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+
         .ciclo-estimativa-box {
             background: #f0f9ff;
             border: 1px solid #bae6fd;
@@ -696,6 +787,9 @@
         @media (max-width: 992px) {
             .kpi-grid-4 {
                 grid-template-columns: repeat(2, 1fr);
+            }
+            .summary-banner-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -751,11 +845,19 @@
     <div id="app-screen">
         <aside class="sidebar-panel">
             <div class="sidebar-logo">PROD-TECH</div>
+            
+            <div class="sidebar-section-label">OPERACIONAL</div>
             <button id="tab-link-dash" class="sidebar-nav-item" onclick="switchViewTab('dash')">📊 Dashboard Home</button>
             <button id="tab-link-prog" class="sidebar-nav-item" onclick="switchViewTab('prog')">📅 Programação O.P.</button>
             <button id="tab-link-calc" class="sidebar-nav-item active" onclick="switchViewTab('calc')">📝 Apontamentos</button>
             <button id="tab-link-rel" class="sidebar-nav-item" onclick="switchViewTab('rel')">📑 Relatório Geral</button>
-            <button id="tab-link-adm" class="sidebar-nav-item" style="display:none;" onclick="switchViewTab('adm')" id="menu-adm-gate">👥 Usuários</button>
+
+            <div class="sidebar-section-label">ANÁLISES DO SETOR</div>
+            <button id="tab-link-setup" class="sidebar-nav-item" onclick="switchViewTab('setup')">⏱️ Setup</button>
+            <button id="tab-link-improd" class="sidebar-nav-item" onclick="switchViewTab('improd')">⚠️ Itens Improdutivos</button>
+
+            <div class="sidebar-section-label" id="sidebar-label-adm" style="display:none;">ADMINISTRAÇÃO</div>
+            <button id="tab-link-adm" class="sidebar-nav-item" style="display:none;" onclick="switchViewTab('adm')">👥 Usuários</button>
 
             <div class="sidebar-footer">
                 <div id="user-display">Carregando...</div>
@@ -766,88 +868,91 @@
 
         <main class="main-workspace">
 
+            <!-- BARRA DE FILTROS GLOBAL PARA AS ABAS ANALÍTICAS (DASHBOARD, SETUP, IMPRODUTIVOS) -->
+            <div id="global-analytics-filter-bar" class="filter-panel-modern" style="display:none;">
+                <span class="filter-group-label">PERÍODO</span>
+                <div class="period-pills-bar">
+                    <button type="button" id="pill-periodo-tudo" class="period-pill-btn" onclick="selecionarPeriodoDash('tudo')">Tudo</button>
+                    <button type="button" id="pill-periodo-hoje" class="period-pill-btn" onclick="selecionarPeriodoDash('hoje')">Hoje</button>
+                    <button type="button" id="pill-periodo-ontem" class="period-pill-btn" onclick="selecionarPeriodoDash('ontem')">Ontem</button>
+                    <button type="button" id="pill-periodo-7d" class="period-pill-btn" onclick="selecionarPeriodoDash('7d')">Últimos 7 dias</button>
+                    <button type="button" id="pill-periodo-30d" class="period-pill-btn" onclick="selecionarPeriodoDash('30d')">Últimos 30 dias</button>
+                    <button type="button" id="pill-periodo-mes" class="period-pill-btn active" onclick="selecionarPeriodoDash('mes_atual')">Mês atual</button>
+                    <select id="dash-select-data-lancada" class="period-date-select" onchange="selecionarDataEspecificaDash()">
+                        <option value="">Data específica</option>
+                    </select>
+                </div>
+
+                <div class="filter-dropdowns-bar">
+                    <div class="filter-dropdowns-left">
+                        <div class="filter-dd-item">
+                            <span class="filter-group-label">MÁQUINA</span>
+                            <select id="dash-select-maquina" class="filter-dd-select" onchange="atualizarAbaAnaliticaAtiva()">
+                                <option value="">Todos</option>
+                                <option value="01">INJ-01</option>
+                                <option value="02">INJ-02</option>
+                                <option value="03">INJ-03</option>
+                                <option value="04">INJ-04</option>
+                                <option value="05">INJ-05</option>
+                                <option value="06">INJ-06</option>
+                                <option value="07">INJ-07</option>
+                                <option value="08">INJ-08</option>
+                                <option value="09">INJ-09</option>
+                                <option value="10">INJ-10</option>
+                                <option value="11">INJ-11</option>
+                                <option value="12">INJ-12</option>
+                                <option value="13">INJ-13</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-dd-item">
+                            <span class="filter-group-label">CÓDIGO</span>
+                            <select id="dash-select-codigo" class="filter-dd-select" onchange="atualizarAbaAnaliticaAtiva()">
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-dd-item">
+                            <span class="filter-group-label">O.P.</span>
+                            <select id="dash-select-op" class="filter-dd-select" onchange="atualizarAbaAnaliticaAtiva()">
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-dd-item">
+                            <span class="filter-group-label">TURNO</span>
+                            <select id="dash-select-turno" class="filter-dd-select" onchange="atualizarAbaAnaliticaAtiva()">
+                                <option value="">Todos</option>
+                                <option value="1º Turno">1º Turno</option>
+                                <option value="2º Turno">2º Turno</option>
+                                <option value="3º Turno">3º Turno</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-dd-item">
+                            <span class="filter-group-label">OPERADOR</span>
+                            <select id="dash-select-operador" class="filter-dd-select" onchange="atualizarAbaAnaliticaAtiva()">
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn-clear-filters-pill" onclick="limparFiltrosDashboard()">↺ Limpar filtros</button>
+                </div>
+
+                <div id="dash-filter-status-bar" class="filter-active-summary">
+                    Filtros: <b>Mês atual</b> · Exibindo <b>0</b> de <b>0</b> apontamentos
+                </div>
+            </div>
+
             <!-- ABA 0: DASHBOARD HOME -->
             <section id="dash" class="view-content">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
-                    <h2 class="dashboard-title" style="margin-bottom:0;">Dashboard de Eficiência e OEE</h2>
+                    <div>
+                        <h2 class="dashboard-title">Dashboard de Eficiência e OEE</h2>
+                        <div class="dashboard-subtitle">Visão consolidada de Disponibilidade, Performance, Qualidade e Paradas</div>
+                    </div>
                     <button onclick="sincronizarDadosGoogleSheets(true)" style="background:var(--primary-blue); color:white; border:none; padding:9px 14px; border-radius:8px; font-weight:700; font-size:0.82rem; cursor:pointer;">🔄 Atualizar Planilha</button>
-                </div>
-
-                <!-- BARRA DE FILTROS AVANÇADA -->
-                <div class="filter-panel-modern">
-                    <span class="filter-group-label">PERÍODO</span>
-                    <div class="period-pills-bar">
-                        <button type="button" id="pill-periodo-tudo" class="period-pill-btn" onclick="selecionarPeriodoDash('tudo')">Tudo</button>
-                        <button type="button" id="pill-periodo-hoje" class="period-pill-btn" onclick="selecionarPeriodoDash('hoje')">Hoje</button>
-                        <button type="button" id="pill-periodo-ontem" class="period-pill-btn" onclick="selecionarPeriodoDash('ontem')">Ontem</button>
-                        <button type="button" id="pill-periodo-7d" class="period-pill-btn" onclick="selecionarPeriodoDash('7d')">Últimos 7 dias</button>
-                        <button type="button" id="pill-periodo-30d" class="period-pill-btn" onclick="selecionarPeriodoDash('30d')">Últimos 30 dias</button>
-                        <button type="button" id="pill-periodo-mes" class="period-pill-btn active" onclick="selecionarPeriodoDash('mes_atual')">Mês atual</button>
-                        <select id="dash-select-data-lancada" class="period-date-select" onchange="selecionarDataEspecificaDash()">
-                            <option value="">Data específica</option>
-                        </select>
-                    </div>
-
-                    <div class="filter-dropdowns-bar">
-                        <div class="filter-dropdowns-left">
-                            <div class="filter-dd-item">
-                                <span class="filter-group-label">MÁQUINA</span>
-                                <select id="dash-select-maquina" class="filter-dd-select" onchange="buildDashboardAnalyticsUI()">
-                                    <option value="">Todos</option>
-                                    <option value="01">INJ-01</option>
-                                    <option value="02">INJ-02</option>
-                                    <option value="03">INJ-03</option>
-                                    <option value="04">INJ-04</option>
-                                    <option value="05">INJ-05</option>
-                                    <option value="06">INJ-06</option>
-                                    <option value="07">INJ-07</option>
-                                    <option value="08">INJ-08</option>
-                                    <option value="09">INJ-09</option>
-                                    <option value="10">INJ-10</option>
-                                    <option value="11">INJ-11</option>
-                                    <option value="12">INJ-12</option>
-                                    <option value="13">INJ-13</option>
-                                </select>
-                            </div>
-
-                            <div class="filter-dd-item">
-                                <span class="filter-group-label">CÓDIGO</span>
-                                <select id="dash-select-codigo" class="filter-dd-select" onchange="buildDashboardAnalyticsUI()">
-                                    <option value="">Todos</option>
-                                </select>
-                            </div>
-
-                            <div class="filter-dd-item">
-                                <span class="filter-group-label">O.P.</span>
-                                <select id="dash-select-op" class="filter-dd-select" onchange="buildDashboardAnalyticsUI()">
-                                    <option value="">Todos</option>
-                                </select>
-                            </div>
-
-                            <div class="filter-dd-item">
-                                <span class="filter-group-label">TURNO</span>
-                                <select id="dash-select-turno" class="filter-dd-select" onchange="buildDashboardAnalyticsUI()">
-                                    <option value="">Todos</option>
-                                    <option value="1º Turno">1º Turno</option>
-                                    <option value="2º Turno">2º Turno</option>
-                                    <option value="3º Turno">3º Turno</option>
-                                </select>
-                            </div>
-
-                            <div class="filter-dd-item">
-                                <span class="filter-group-label">OPERADOR</span>
-                                <select id="dash-select-operador" class="filter-dd-select" onchange="buildDashboardAnalyticsUI()">
-                                    <option value="">Todos</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <button type="button" class="btn-clear-filters-pill" onclick="limparFiltrosDashboard()">↺ Limpar filtros</button>
-                    </div>
-
-                    <div id="dash-filter-status-bar" class="filter-active-summary">
-                        Filtros: <b>Mês atual</b> · Exibindo <b>0</b> de <b>0</b> apontamentos
-                    </div>
                 </div>
 
                 <!-- 4 CARDS OFICIAIS DO OEE -->
@@ -928,6 +1033,235 @@
 
                 <div class="ui-card" id="box-detalhe-maquina-dash" style="display:none;">
                     <div id="dash-info-operadores"></div>
+                </div>
+            </section>
+
+            <!-- ========================================================
+                 NOVA ABA: ANÁLISE DE SETUP (CÓDIGOS 01 E 02)
+                 ======================================================== -->
+            <section id="setup" class="view-content">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
+                    <div>
+                        <h2 class="dashboard-title">ANÁLISE DE <span style="color:#dc2626;">SETUP</span></h2>
+                        <div class="dashboard-subtitle">Horas e ocorrências dos códigos de parada de Setup (01 e 02) nos apontamentos</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <select id="setup-filtro-codigo" class="filter-dd-select" onchange="buildSetupAnalyticsUI()">
+                            <option value="todos">Códigos 01 e 02 (Todos Setups)</option>
+                            <option value="01">01 - Set Up Início de Produção</option>
+                            <option value="02">02 - Set Up Manutenção de Molde</option>
+                        </select>
+                        <button onclick="sincronizarDadosGoogleSheets(true)" style="background:var(--primary-blue); color:white; border:none; padding:9px 14px; border-radius:8px; font-weight:700; font-size:0.82rem; cursor:pointer;">🔄 Atualizar</button>
+                    </div>
+                </div>
+
+                <div class="ui-card">
+                    <div style="margin-bottom:14px;">
+                        <div style="font-weight:800; font-size:1.05rem; color:#1e293b;">Setup</div>
+                        <div style="font-size:0.8rem; color:#64748b;">Apontamentos de setup registrados nos turnos</div>
+                    </div>
+
+                    <div class="kpi-grid-3">
+                        <div class="oee-kpi-card" style="border-left-color: #4f46e5; background:#f8fafc;">
+                            <div class="oee-kpi-title">HORAS DE SETUP · PERÍODO FILTRADO</div>
+                            <div class="oee-kpi-value" id="setup-kpi-horas" style="color: #1e293b;">0,0 h</div>
+                            <div class="oee-kpi-sub" id="setup-kpi-media">Tempo médio por ocorrência: 0 min</div>
+                        </div>
+
+                        <div class="oee-kpi-card" style="border-left-color: #f59e0b; background:#fffbeb;">
+                            <div class="oee-kpi-title">OCORRÊNCIAS NO PERÍODO</div>
+                            <div class="oee-kpi-value" id="setup-kpi-ocorrencias" style="color: #1e293b;">0</div>
+                            <div class="oee-kpi-sub" id="setup-kpi-detalhe-cod">01 Início: 0 · 02 Manutenção: 0</div>
+                        </div>
+
+                        <div class="oee-kpi-card" style="border-left-color: #16a34a; background:#f0fdf4;">
+                            <div class="oee-kpi-title">MÁQUINAS COM SETUP</div>
+                            <div class="oee-kpi-value" id="setup-kpi-maquinas" style="color: #1e293b;">0</div>
+                            <div class="oee-kpi-sub" id="setup-kpi-maq-top">Maior tempo: -</div>
+                        </div>
+                    </div>
+
+                    <div style="font-weight:700; font-size:0.95rem; color:#1e293b; margin: 18px 0 10px 0;">Setups por turno</div>
+                    <div class="kpi-grid-4">
+                        <div class="setup-turno-card">
+                            <div class="setup-turno-label">1º Turno (06:00 - 14:00)</div>
+                            <div class="setup-turno-count" id="setup-t1-qtd">0 apontamentos</div>
+                            <div class="setup-turno-hours" id="setup-t1-horas">0,0 h apontadas</div>
+                        </div>
+                        <div class="setup-turno-card">
+                            <div class="setup-turno-label">2º Turno (14:00 - 22:00)</div>
+                            <div class="setup-turno-count" id="setup-t2-qtd">0 apontamentos</div>
+                            <div class="setup-turno-hours" id="setup-t2-horas">0,0 h apontadas</div>
+                        </div>
+                        <div class="setup-turno-card">
+                            <div class="setup-turno-label">3º Turno (22:00 - 06:00)</div>
+                            <div class="setup-turno-count" id="setup-t3-qtd">0 apontamentos</div>
+                            <div class="setup-turno-hours" id="setup-t3-horas">0,0 h apontadas</div>
+                        </div>
+                        <div class="setup-turno-card">
+                            <div class="setup-turno-label">Turno Não informado</div>
+                            <div class="setup-turno-count" id="setup-t0-qtd">0 apontamentos</div>
+                            <div class="setup-turno-hours" id="setup-t0-horas">0,0 h apontadas</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ui-card">
+                    <div style="font-weight:700; font-size:0.95rem; margin-bottom:10px;">Horas de Setup por Máquina Injetora</div>
+                    <div class="chart-canvas-wrapper">
+                        <canvas id="chartSetupPorMaquina"></canvas>
+                    </div>
+                </div>
+
+                <div class="ui-card">
+                    <div style="font-weight:700; font-size:0.95rem; margin-bottom:10px;">Detalhamento das Ocorrências de Setup</div>
+                    <div class="table-scroll-holder">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Turno</th>
+                                    <th>Máquina</th>
+                                    <th>Código</th>
+                                    <th>O.P.</th>
+                                    <th>Tipo de Setup</th>
+                                    <th>Início</th>
+                                    <th>Fim</th>
+                                    <th>Duração</th>
+                                    <th>Operador</th>
+                                    <th>Observação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-setup-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========================================================
+                 NOVA ABA: ITENS IMPRODUTIVOS (< 70% EFICIÊNCIA)
+                 ======================================================== -->
+            <section id="improd" class="view-content">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
+                    <div>
+                        <h2 class="dashboard-title">ITENS <span style="color:#dc2626;">IMPRODUTIVOS</span></h2>
+                        <div class="dashboard-subtitle">Análise dos itens abaixo de 70% de eficiência, mantendo a máquina como contexto operacional</div>
+                    </div>
+                    <button onclick="sincronizarDadosGoogleSheets(true)" style="background:var(--primary-blue); color:white; border:none; padding:9px 14px; border-radius:8px; font-weight:700; font-size:0.82rem; cursor:pointer;">🔄 Atualizar Dados</button>
+                </div>
+
+                <!-- LINHA 1 DE CARDS -->
+                <div class="kpi-grid-4">
+                    <div class="oee-kpi-card" style="border-left-color: #dc2626;">
+                        <div class="oee-kpi-title">ITENS EM VERMELHO</div>
+                        <div class="oee-kpi-value" id="imp-kpi-vermelho" style="color: #dc2626;">0</div>
+                        <div class="oee-kpi-sub" id="imp-sub-vermelho">de 0 itens analisados (&lt; 70%)</div>
+                    </div>
+
+                    <div class="oee-kpi-card" style="border-left-color: #dc2626;">
+                        <div class="oee-kpi-title">EFICIÊNCIA CONJUNTA</div>
+                        <div class="oee-kpi-value" id="imp-kpi-efic" style="color: #dc2626;">0,0%</div>
+                        <div class="oee-kpi-sub">OEE médio dos itens críticos</div>
+                    </div>
+
+                    <div class="oee-kpi-card" style="border-left-color: #dc2626;">
+                        <div class="oee-kpi-title">MAIOR CRITICIDADE</div>
+                        <div class="oee-kpi-value" id="imp-kpi-criticidade" style="color: #dc2626; font-size:1.35rem;">NENHUMA</div>
+                        <div class="oee-kpi-sub" id="imp-sub-criticidade">0,0% · -</div>
+                    </div>
+
+                    <div class="oee-kpi-card" style="border-left-color: #dc2626;">
+                        <div class="oee-kpi-title">DÉFICIT DO PLANO</div>
+                        <div class="oee-kpi-value" id="imp-kpi-deficit" style="color: #dc2626;">0</div>
+                        <div class="oee-kpi-sub">peças abaixo do teórico/programado</div>
+                    </div>
+                </div>
+
+                <!-- LINHA 2 DE CARDS -->
+                <div class="kpi-grid-4">
+                    <div class="oee-kpi-card" style="border-left-color: #ef4444;">
+                        <div class="oee-kpi-title">HORAS PERDIDAS</div>
+                        <div class="oee-kpi-value" id="imp-kpi-horas-perdidas" style="color: #dc2626;">0,0h</div>
+                        <div class="oee-kpi-sub" id="imp-sub-ocorrencias">0 ocorrências de parada</div>
+                    </div>
+
+                    <div class="oee-kpi-card" style="border-left-color: #f59e0b;">
+                        <div class="oee-kpi-title">IMPACTO NO PLANO</div>
+                        <div class="oee-kpi-value" id="imp-kpi-impacto" style="color: #b45309;">0</div>
+                        <div class="oee-kpi-sub">peças perdidas nos itens críticos</div>
+                    </div>
+
+                    <div class="oee-kpi-card" style="border-left-color: #f59e0b;">
+                        <div class="oee-kpi-title">ITENS CRÍTICOS</div>
+                        <div class="oee-kpi-value" id="imp-kpi-criticos2" style="color: #b45309;">0</div>
+                        <div class="oee-kpi-sub">abaixo do limite de 70%</div>
+                    </div>
+
+                    <div class="oee-kpi-card" style="border-left-color: #1e293b;">
+                        <div class="oee-kpi-title">PRINCIPAL CAUSA</div>
+                        <div class="oee-kpi-value" id="imp-kpi-causa" style="color: #0f172a; font-size:1.05rem;">NENHUMA</div>
+                        <div class="oee-kpi-sub" id="imp-sub-causa">0,0h de impacto</div>
+                    </div>
+                </div>
+
+                <!-- RESUMO DO PERÍODO -->
+                <div class="summary-banner-purple">
+                    <div class="summary-banner-title">RESUMO DO PERÍODO</div>
+                    <div class="summary-banner-grid" id="imp-resumo-texto">
+                        <div>Aguardando dados para análise de itens improdutivos.</div>
+                        <div></div>
+                    </div>
+                </div>
+
+                <div class="charts-grid-2">
+                    <div class="ui-card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                            <div>
+                                <div style="font-weight:700; font-size:0.95rem;">Tendência das Paradas (Itens Críticos)</div>
+                                <div style="font-size:0.75rem; color:#64748b;">Evolução das horas perdidas por data</div>
+                            </div>
+                            <span style="background:#eef2ff; color:#4f46e5; font-size:0.7rem; font-weight:800; padding:4px 8px; border-radius:6px;">TENDÊNCIA</span>
+                        </div>
+                        <div class="chart-canvas-wrapper">
+                            <canvas id="chartTendenciaImprod"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="ui-card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                            <div>
+                                <div style="font-weight:700; font-size:0.95rem;">Top Itens Improdutivos (Déficit de Peças)</div>
+                                <div style="font-size:0.75rem; color:#64748b;">Produtos com maior perda frente à meta</div>
+                            </div>
+                            <span style="background:#fef2f2; color:#dc2626; font-size:0.7rem; font-weight:800; padding:4px 8px; border-radius:6px;">FOCO</span>
+                        </div>
+                        <div class="chart-canvas-wrapper">
+                            <canvas id="chartTopItensImprod"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ui-card">
+                    <div style="font-weight:700; font-size:0.95rem; margin-bottom:10px;">Ranking de Itens Improdutivos (&lt; 70% de Eficiência)</div>
+                    <div class="table-scroll-holder">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Descrição</th>
+                                    <th>Máquinas</th>
+                                    <th>Apontamentos</th>
+                                    <th>Produzido</th>
+                                    <th>Teórico/Meta</th>
+                                    <th>Déficit</th>
+                                    <th>Horas Paradas</th>
+                                    <th>Eficiência</th>
+                                    <th>Principal Parada</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-improdutivos-body"></tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 
@@ -1088,7 +1422,7 @@
 
             <!-- ABA 2: APONTAMENTOS -->
             <section id="calc" class="view-content active">
-                <h2 class="dashboard-title">Apontamento de Produção</h2>
+                <h2 class="dashboard-title" style="margin-bottom:18px;">Apontamento de Produção</h2>
 
                 <div class="ui-card">
                     <input type="hidden" id="entry-edit-id">
@@ -1148,7 +1482,7 @@
                             <span id="op-banner-status" class="op-badge-open">EM ANDAMENTO</span>
                         </div>
                         <div id="op-banner-subtitulo" style="font-size: 0.82rem; color: #475569; margin-bottom: 10px;"></div>
-                        <div class="op-progress-grid">
+                        <div class="op -progress-grid">
                             <div class="op-stat-item">
                                 <span class="op-stat-label">PROGRAMADO</span>
                                 <span id="op-stat-prog" class="op-stat-num">0</span>
@@ -1392,16 +1726,12 @@
 
         </main>
     </div>
-
     <script>
         // ========================================================
         // COLE AQUI A URL DO SEU WEB APP DO GOOGLE APPS SCRIPT (PROD-TECH):
         // ========================================================
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxKmHvNqLji-71kJcOZdlGs31yWwbD3PlIrtP5GTcFgp4SkNbjYfFxAPPjkZ6ZhfVw8yw/exec";
 
-        // ========================================================
-        // REGISTRO DO SERVICE WORKER E INSTALAÇÃO PWA
-        // ========================================================
         if ("serviceWorker" in navigator) {
             window.addEventListener("load", () => {
                 navigator.serviceWorker.register("./sw.js").catch((err) => {
@@ -1441,9 +1771,6 @@
         if (btnLoginInstall) btnLoginInstall.onclick = acionarInstalacaoPWA;
         if (btnSideInstall) btnSideInstall.onclick = acionarInstalacaoPWA;
 
-        // ========================================================
-        // FUNÇÕES UTILITÁRIAS E LÓGICA DO SISTEMA
-        // ========================================================
         function pad2(code) {
             if (code === null || code === undefined) return "";
             const str = String(code).trim();
@@ -1459,23 +1786,22 @@
             return pad2(digitsOnly);
         }
 
+        function formatProductCode(val) {
+            if (val === null || val === undefined) return "";
+            let str = String(val).trim().toUpperCase();
+            if (!str) return "";
+            if (/^\d{3}[.,]\d{3}$/.test(str)) {
+                str = "00." + str.replace(",", ".");
+            }
+            return str;
+        }
+
         function formatPtNumber(val, decimals = 1) {
             const num = Number(val) || 0;
             return num.toLocaleString('pt-BR', {
                 minimumFractionDigits: decimals,
                 maximumFractionDigits: decimals
             });
-        }
-
-        function formatProductCode(val) {
-            if (val === null || val === undefined) return "";
-            let str = String(val).trim().toUpperCase();
-            if (!str) return "";
-            // Se o Google Sheets removeu o "00." e devolveu apenas "500.432" (ou "500,432")
-            if (/^\d{3}[.,]\d{3}$/.test(str)) {
-                str = "00." + str.replace(",", ".");
-            }
-            return str;
         }
 
         function formatSheetTime(val) {
@@ -1668,7 +1994,7 @@
                 const res = await apiSheets({ action: "getAll" });
                 if (res.status === "ok") {
                     cacheDataRecords = normalizarRegistrosProducao(res.producao);
-                    cacheProdutosList = res.produtos || [];
+                    cacheProdutosList = (res.produtos || []).map(p => ({ ...p, codigo: formatProductCode(p.codigo) }));
                     cacheProgramacaoList = normalizarProgramacao(res.programacao);
                     cacheUsuariosList = res.usuarios || [];
 
@@ -1700,8 +2026,8 @@
                 if (destino === "programacao") atualizarEstimativaHorasCiclo();
                 return;
             }
-            const idProduto = codigoInput.trim().toUpperCase();
-            const produto = cacheProdutosList.find(p => String(p.codigo).trim().toUpperCase() === idProduto);
+            const idProduto = formatProductCode(codigoInput);
+            const produto = cacheProdutosList.find(p => formatProductCode(p.codigo) === idProduto);
             if (produto) {
                 if (destino === "apontamento") {
                     const elCavidades = document.getElementById('form-cav');
@@ -1746,9 +2072,9 @@
             if (Number(cavFallback) > 0 && Number(cicloFallback) > 0) {
                 return calcularHorasEstimadasValores(qtdProgramada, cavFallback, cicloFallback);
             }
-            const codNorm = String(codigoProduto || "").trim().toUpperCase();
+            const codNorm = formatProductCode(codigoProduto);
             if (!codNorm) return { horas: 0, valido: false };
-            const prod = cacheProdutosList.find(p => String(p.codigo).trim().toUpperCase() === codNorm);
+            const prod = cacheProdutosList.find(p => formatProductCode(p.codigo) === codNorm);
             if (!prod) return { horas: 0, valido: false };
             return calcularHorasEstimadasValores(qtdProgramada, prod.cavidades, prod.ciclo);
         }
@@ -1757,7 +2083,7 @@
             const txtEl = document.getElementById('txt-estimativa-ciclo');
             if (!txtEl) return;
 
-            const cod = document.getElementById('prog-cod') ? document.getElementById('prog-cod').value.trim().toUpperCase() : "";
+            const cod = document.getElementById('prog-cod') ? formatProductCode(document.getElementById('prog-cod').value) : "";
             const qtd = document.getElementById('prog-qtd') ? Number(document.getElementById('prog-qtd').value) : 0;
             const hDisp = document.getElementById('prog-horas-disp') ? parseFloat(document.getElementById('prog-horas-disp').value) || 0 : 0;
             const cav = document.getElementById('prog-cav') ? parseFloat(document.getElementById('prog-cav').value) || 0 : 0;
@@ -1769,7 +2095,7 @@
             }
 
             const est = calcularHorasEstimadasValores(qtd, cav, ciclo);
-            const jaExiste = cod && cacheProdutosList.some(p => String(p.codigo).trim().toUpperCase() === cod);
+            const jaExiste = cod && cacheProdutosList.some(p => formatProductCode(p.codigo) === cod);
             const tagCadastro = cod
                 ? (jaExiste
                     ? `<span style="color:#0369a1; font-size:0.78rem;">(Produto ${cod} já cadastrado — será atualizado se alterado)</span>`
@@ -1897,7 +2223,7 @@
                 const maquina = cleanMachineCode(document.getElementById('prog-maq').value);
                 const nrOp = document.getElementById('prog-op').value.trim();
                 const lote = document.getElementById('prog-lote').value.trim();
-                const codigoProduto = document.getElementById('prog-cod').value.trim().toUpperCase();
+                const codigoProduto = formatProductCode(document.getElementById('prog-cod').value);
                 const descricaoProduto = document.getElementById('prog-desc').value.trim();
                 const qtdProgramada = Number(document.getElementById('prog-qtd').value) || 0;
                 const horasDisponiveis = parseFloat(String(document.getElementById('prog-horas-disp').value).replace(",", ".")) || 0;
@@ -1973,7 +2299,7 @@
             document.getElementById('prog-qtd').value = p.qtdProgramada;
             document.getElementById('prog-horas-disp').value = p.horasDisponiveis || "";
 
-            const prodCad = cacheProdutosList.find(pr => String(pr.codigo).trim().toUpperCase() === String(p.codigoProduto).trim().toUpperCase());
+            const prodCad = cacheProdutosList.find(pr => formatProductCode(pr.codigo) === formatProductCode(p.codigoProduto));
             document.getElementById('prog-cav').value = p.cavidades || (prodCad ? prodCad.cavidades : "");
             document.getElementById('prog-ciclo').value = p.ciclo || (prodCad ? prodCad.ciclo : "");
 
@@ -2067,7 +2393,6 @@
                 tbody.appendChild(tr);
             });
         }
-
         async function verifyInitialSetupSystem() {
             const statusMsg = document.getElementById('login-status-msg');
             const errBox = document.getElementById('login-erro-banner');
@@ -2094,7 +2419,7 @@
                 const res = await apiSheets({ action: "getAll" });
                 if (res.status === "ok") {
                     cacheDataRecords = normalizarRegistrosProducao(res.producao);
-                    cacheProdutosList = res.produtos || [];
+                    cacheProdutosList = (res.produtos || []).map(p => ({ ...p, codigo: formatProductCode(p.codigo) }));
                     cacheProgramacaoList = normalizarProgramacao(res.programacao);
                     cacheUsuariosList = res.usuarios || [];
 
@@ -2225,9 +2550,6 @@
             else if (id === 'calc') { atualizarDatalistOpsProgramadas(); atualizarPainelSaldoOP(); }
         };
 
-        // ========================================================
-        // CONTROLES DA BARRA DE FILTROS DO DASHBOARD
-        // ========================================================
         window.selecionarPeriodoDash = function(periodo) {
             dashPeriodoAtual = periodo;
             const mapPills = {
@@ -2312,7 +2634,7 @@
             const selectCod = document.getElementById('dash-select-codigo');
             if (selectCod) {
                 const valAtual = selectCod.value;
-                const codigos = [...new Set(registrosPermitidos.map(r => String(r.produto || "").trim().toUpperCase()))].filter(Boolean).sort();
+                const codigos = [...new Set(registrosPermitidos.map(r => formatProductCode(r.produto)))].filter(Boolean).sort();
                 selectCod.innerHTML = '<option value="">Todos</option>';
                 codigos.forEach(c => {
                     const opt = document.createElement('option');
@@ -2553,7 +2875,7 @@
                 const data = document.getElementById('form-data').value;
                 const turno = document.getElementById('form-turno').value;
                 const maq = cleanMachineCode(document.getElementById('form-maq').value);
-                const prod = document.getElementById('form-prod').value.trim().toUpperCase();
+                const prod = formatProductCode(document.getElementById('form-prod').value);
 
                 if (!data || !turno || !maq || !prod) {
                     alert("Data, Turno, Máquina e Código do Produto são obrigatórios!");
@@ -2840,7 +3162,7 @@
             const dashDataSelect = document.getElementById('dash-select-data-lancada');
 
             const maqSel = dashMaqSelect ? cleanMachineCode(dashMaqSelect.value) : "";
-            const codSel = dashCodSelect ? dashCodSelect.value.trim().toUpperCase() : "";
+            const codSel = dashCodSelect ? formatProductCode(dashCodSelect.value) : "";
             const opSel = dashOpSelect ? dashOpSelect.value.trim().toUpperCase() : "";
             const turnoSel = dashTurnoSelect ? dashTurnoSelect.value : "";
             const operSel = dashOperSelect ? dashOperSelect.value.trim() : "";
@@ -2850,7 +3172,7 @@
             let dadosFiltrados = basePermitida.filter(i => {
                 if (!filtrarItemPorPeriodoDash(i.data)) return false;
                 if (maqSel && cleanMachineCode(i.maquina) !== maqSel) return false;
-                if (codSel && String(i.produto || "").trim().toUpperCase() !== codSel) return false;
+                if (codSel && formatProductCode(i.produto) !== codSel) return false;
                 if (opSel && String(i.nrOp || "").trim().toUpperCase() !== opSel) return false;
                 if (turnoSel && obterTurnoRegistro(i) !== turnoSel) return false;
                 if (operSel && String(i.nomeOperador || "").trim() !== operSel) return false;
@@ -2860,7 +3182,7 @@
             let progFiltrada = cacheProgramacaoList.filter(p => {
                 if (!filtrarItemPorPeriodoDash(p.data)) return false;
                 if (maqSel && cleanMachineCode(p.maquina) !== maqSel) return false;
-                if (codSel && String(p.codigoProduto || "").trim().toUpperCase() !== codSel) return false;
+                if (codSel && formatProductCode(p.codigoProduto) !== codSel) return false;
                 if (opSel && String(p.nrOp || "").trim().toUpperCase() !== opSel) return false;
                 return true;
             });
