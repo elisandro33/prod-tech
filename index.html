@@ -1632,7 +1632,7 @@
                 const norm = {
                     ...item,
                     data: formatSheetDate(item.data),
-                    produto: String(item.produto || "").trim().toUpperCase(),
+                    produto: formatProductCode(item.produto),
                     descricaoProduto: String(item.descricaoProduto || "").trim(),
                     nrOp: String(item.nrOp || "").trim(),
                     lote: String(item.lote || "").trim(),
@@ -1653,7 +1653,7 @@
                 maquina: cleanMachineCode(item.maquina),
                 nrOp: String(item.nrOp || "").trim(),
                 lote: String(item.lote || "").trim(),
-                codigoProduto: String(item.codigoProduto || "").trim().toUpperCase(),
+                codigoProduto: formatProductCode(item.codigoProduto),
                 descricaoProduto: String(item.descricaoProduto || "").trim(),
                 qtdProgramada: Number(item.qtdProgramada) || 0,
                 horasDisponiveis: parseFloat(String(item.horasDisponiveis || 0).replace(",", ".")) || 0,
